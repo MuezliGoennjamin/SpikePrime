@@ -18,12 +18,9 @@ Motor_Z2 = port.D           # Hub Port D
 height_tablet = 15          # [mm]
 
 
-async def main():
 
 
-    await motor.run_for_degrees(Motor_X1, 900, velocity_X1, stop=motor.CONTINUE)
-    await motor.run_for_degrees(Motor_X2, 400, velocity_X2, stop=motor.CONTINUE)
-    await motor.run_for_degrees(Motor_Y2, 400, velocity_Y2, stop=motor.CONTINUE)
-    await motor.run_for_degrees(Motor_Z2, 100, velocity_Z2, stop=motor.CONTINUE)
-
-runloop.run(main())
+motor.run_for_degrees(Motor_X1, 900, velocity_X1, stop=motor.CONTINUE)
+motor.run_for_degrees(Motor_X2, 400, velocity_X2, stop=motor.CONTINUE)
+motor.run_for_degrees(Motor_Y2, 400, velocity_Y2, stop=motor.CONTINUE)
+motor.run_for_degrees(Motor_Z2, 100, velocity_Z2, stop=motor.CONTINUE)
