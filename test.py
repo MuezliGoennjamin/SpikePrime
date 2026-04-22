@@ -194,68 +194,6 @@ async def main():
     # creates the playground
     board = ReversiBoard()
 
-    ######################################################
-    #                    Playground Scan                 #
-    ######################################################
-    # scans each field on the playground for black and white tokens
-    async def playground_scan():
-     # default values
-        row = 8
-        column = 65         # first column on the board in ASCII format
-
-        await default_position()            # move to the default coordinate system position
-        await X2_relative(4)                # move to the first field (A8) in x-direction
-        await Y2_relative(2)                # move to the first field (A8) in y-direction
-
-        # scan field for white or black token
-        field_scan("A8", board)
-
-        # scan each column
-        while column <= 72:
-
-            if row == 8:
-                row = 7
-                # scan each field of one column in positive x-direction
-                while row >= 1:
-                    await X2_relative(2)                                # move to the next field
-                    column_letter = chr(column)                         # convert the column number in the right letter (e.g. 65 to "A")
-                    position = column_letter + str(row)                 # connects the column letter with the row number
-
-                    # scan field for white or black token and save the data of the field
-                    field_scan(position, board)
-                    row = row - 1
-
-            else:
-                # scan each field of one column in negative x-direction
-                while row <= 8:
-                    await X2_relative(-2)                                # move to the next field
-                    column_letter = chr(column)                        # convert the column number in the right letter (e.g. 65 to "A")
-                    position = column_letter + str(row)                # connects the column letter with the row number
-
-                    # scan field for white or black token and save the data of the field
-                    field_scan(position, board)
-                    row = row + 1
-
-             # exclude out of range values for the next iteration
-            if row == 0:
-                row = 1
-            elif row == 9:
-                row = 8
-            
-            column = column + 1                            # count up the column
-            if column > 72:                                # end of the board reached
-                break
-
-            await Y2_relative(2)                               # move the robot to the next column (one field in positive Y2-direction)
-            column_letter = chr(column)                        # convert the column number in the right letter (e.g. 65 to "A")
-            position = column_letter + str(row)                # connects the column letter with the row number
-
-            # scan field for white or black token and save the data of the field
-            field_scan(position, board)
-
-            if column % 2 == 0:                                # even column
-                row = row + 1
-                
-    await playground_scan()
+   
 
 runloop.run(main())
