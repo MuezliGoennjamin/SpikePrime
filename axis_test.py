@@ -9,8 +9,8 @@ from hub import port, button
 #global variables
 velocity_X1 = 150
 velocity_X2 = 90
-velocity_Y2 = 50
-velocity_Z2 = 10
+velocity_Y2 = -100
+velocity_Z2 = 50
 Motor_X1 = port.A           # Hub Port A
 Motor_X2 = port.B           # Hub Port B
 Motor_Y2 = port.C           # Hub Port C
@@ -20,10 +20,9 @@ height_tablet = 15          # [mm]
 
 async def main():
     await motor.run_for_degrees(Motor_X1, 720, velocity_X1)
-    await motor.run_for_degrees(Motor_X2, 400, velocity_X2)
-    await motor.run_for_degrees(Motor_Y2, 400, velocity_Y2)
-    await motor.run_for_degrees(Motor_Z2, 100, velocity_Z2)
-    exit
+    await motor.run_for_degrees(Motor_X2, 1440, velocity_X2)
+    await motor.run_for_degrees(Motor_Y2, 720, velocity_Y2)
+    await motor.run_for_degrees(Motor_Z2, 90, velocity_Z2)
 
 runloop.run(main())
 
