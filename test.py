@@ -7,10 +7,10 @@ from hub import port, button
 # Hub Anschluss: Motor X1 = Port A, Motor X2 = Port B, Motor Y2 = Port C, Motor Z2 = Port D, Distance Sensor = Port E, Color Sensor = Port F
 
 #global variables
-velocity_X1 = 90
+velocity_X1 = 150
 velocity_X2 = 90
-velocity_Y2 = 90
-velocity_Z2 = 30
+velocity_Y2 = 100
+velocity_Z2 = 50
 Motor_X1 = port.A           # Hub Port A
 Motor_X2 = port.B           # Hub Port B
 Motor_Y2 = port.C           # Hub Port C
@@ -30,9 +30,9 @@ async def default_position():
 
 # defines the moving distance of the Motors
 async def X2_relative(distance):    # [cm]
-    motor.run_for_degrees(Motor_X2, distance *90, velocity_X2)
+    motor.run_for_degrees(Motor_X2, distance *55, velocity_X2)
 async def Y2_relative(distance):    # [cm]
-    motor.run_for_degrees(Motor_Y2, -distance *90, velocity_Y2)
+    motor.run_for_degrees(Motor_Y2, -distance *55, velocity_Y2)
 
 # scan field for white or black token and save the data of the field
 def field_scan(position, board):
