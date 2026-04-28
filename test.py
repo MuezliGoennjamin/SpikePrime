@@ -12,10 +12,10 @@ velocity_X2 = 90
 velocity_Y2 = 100
 velocity_Z2 = 50
 Motor_X1 = port.A           # Hub Port A
-Motor_X2 = port.B           # Hub Port B
-Motor_Y2 = port.C           # Hub Port C
-Motor_Z2 = port.D           # Hub Port D
-height_tablet = 15          # [mm]
+Motor_X2 = port.C           # Hub Port B
+Motor_Y2 = port.F           # Hub Port C
+Motor_Z2 = port.B           # Hub Port D
+height_tablet = 40          # [mm]
 
 
 ###################################################### 
@@ -36,11 +36,11 @@ async def Y2_relative(distance):    # [cm]
 
 # scan field for white or black token and save the data of the field
 def field_scan(position, board):
-    if color_sensor.color(port.F) is color.GREEN:
+    if color_sensor.color(port.D) is color.GREEN:
         board.set(position, 0)
-    elif color_sensor.color(port.F) is color.WHITE:
+    elif color_sensor.color(port.D) is color.WHITE:
         board.set(position, 1)
-    elif color_sensor.color(port.F) is color.BLACK:
+    elif color_sensor.color(port.D) is color.BLACK:
         board.set(position, 2)
 
 # ============================================
@@ -175,7 +175,7 @@ async def start_sequence():
     distance = distance_sensor.distance(port.E)
 
     # start sequence to move the base platform over the tablet
-    while distance >= height_tablet:
+    while distance == 200: # if the distance is smaller than 200mm, move the robot in positive x-direction   
         await motor.run_for_degrees(Motor_X1, 10, velocity_X1, stop=motor.CONTINUE)
 
     await motor.run_to_relative_position(Motor_X1, 360, velocity_X1, stop=motor.HOLD, deceleration= 50)
