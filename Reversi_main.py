@@ -48,6 +48,7 @@ def field_scan(position, board):
 # ============================================
 
 class ReversiBoard:
+
     """Manages the 8x8 Reversi game board"""
 
     def __init__(self):
@@ -165,7 +166,9 @@ class ReversiBoard:
                 neighbors.append((neighbor_position, neighbor_value))
 
         return neighbors
-        
+    
+
+
 ######################################################
 #                    Start Sequence                  #
 ######################################################
@@ -188,6 +191,8 @@ async def calibration():
 runloop.run(calibration())
 
 
+#### main programm ####
+
 async def main():
 
 
@@ -199,7 +204,7 @@ async def main():
     ######################################################
     # scans each field on the playground for black and white tokens
     async def playground_scan():
-     # default values
+        # default values
         row = 8
         column = 65         # first column on the board in ASCII format
 
@@ -236,7 +241,7 @@ async def main():
                     field_scan(position, board)
                     row = row + 1
 
-             # exclude out of range values for the next iteration
+                # exclude out of range values for the next iteration
             if row == 0:
                 row = 1
             elif row == 9:
@@ -255,7 +260,8 @@ async def main():
 
             if column % 2 == 0:                                # even column
                 row = row + 1
-                
+
+    await start_sequence()
     await playground_scan()
 
 runloop.run(main())
