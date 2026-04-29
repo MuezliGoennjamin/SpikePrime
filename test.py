@@ -48,7 +48,7 @@ async def start_sequence():
     while True:
         distance = distance_sensor.distance(port.E)
 
-        if distance <= 90:
+        if distance <= 110:
             break
 
         await runloop.sleep_ms(10)
@@ -59,18 +59,19 @@ async def start_sequence():
 
 # function to calibrate actors
 async def calibration():
-    # set the default Coordinate System position manually
-    while button.pressed(button.LEFT):
-        await default_position()
-runloop.run(calibration())
+    print("Drücke linken Button zum Kalibrieren")
+
+    while not button.pressed(button.LEFT):
+        await runloop.sleep_ms(10)
+
+    await default_position()
+    print("Kalibriert")
 
 
 async def main():
 
-
     await calibration()
     await start_sequence()
   
-   
 
 runloop.run(main())
