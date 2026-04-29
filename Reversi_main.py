@@ -7,15 +7,14 @@ from hub import port, button
 # Hub Anschluss: Motor X1 = Port A, Motor X2 = Port B, Motor Y2 = Port C, Motor Z2 = Port D, Distance Sensor = Port E, Color Sensor = Port F
 
 #global variables
-velocity_X1 = 90
+velocity_X1 = 150
 velocity_X2 = 90
-velocity_Y2 = 90
-velocity_Z2 = 30
+velocity_Y2 = 100
+velocity_Z2 = 50
 Motor_X1 = port.A           # Hub Port A
 Motor_X2 = port.B           # Hub Port B
 Motor_Y2 = port.C           # Hub Port C
 Motor_Z2 = port.D           # Hub Port D
-height_tablet = 15          # [mm]
 
 
 ###################################################### 
@@ -24,9 +23,9 @@ height_tablet = 15          # [mm]
 
 # sets the default position of the Coordinate System
 async def default_position():
-   await motor.run_to_absolute_position(Motor_X2, 0, velocity_X2, acceleration= velocity_X2, deceleration= velocity_X2)
-   await motor.run_to_absolute_position(Motor_Y2, 0, velocity_X2, acceleration= velocity_Y2, deceleration= velocity_Y2)
-   await motor.run_to_absolute_position(Motor_Z2, 0, velocity_Z2, acceleration= velocity_Z2, deceleration= velocity_Z2)
+   await motor.run_to_absolute_position(Motor_X2, 0, velocity_X2)
+   await motor.run_to_absolute_position(Motor_Y2, 0, velocity_Y2)
+   await motor.run_to_absolute_position(Motor_Z2, 180, velocity_Z2)
 
 # defines the moving distance of the Motors
 async def X2_relative(distance):    # [cm]
@@ -189,10 +188,14 @@ async def start_sequence():
 
 # function to calibrate actors
 async def calibration():
-    # set the default Coordinate System position manually
-    while button.pressed(button.LEFT):
-        await default_position()
-runloop.run(calibration())
+    print("Drücke linken Button zum Kalibrieren")
+
+    while not button.pressed(button.LEFT):
+        await runloop.sleep_ms(10)
+
+    await default_position()
+    print("Kalibriert")
+    print (motor.absolute_position(Motor_X2), motor.absolute_position(Motor_Y2), motor.absolute_position(Motor_Z2))
 
 
 #### main programm ####

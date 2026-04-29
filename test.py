@@ -26,7 +26,7 @@ height_tablet = 40          # [mm]
 async def default_position():
    await motor.run_to_absolute_position(Motor_X2, 0, velocity_X2)
    await motor.run_to_absolute_position(Motor_Y2, 0, velocity_Y2)
-   await motor.run_to_absolute_position(Motor_Z2, 0, velocity_Z2)
+   await motor.run_to_absolute_position(Motor_Z2, 180, velocity_Z2)
 
 # defines the moving distance of the Motors
 async def X2_relative(distance):    # [cm]
@@ -66,6 +66,7 @@ async def calibration():
 
     await default_position()
     print("Kalibriert")
+    print (motor.absolute_position(Motor_X2), motor.absolute_position(Motor_Y2), motor.absolute_position(Motor_Z2))
 
 
 async def main():
