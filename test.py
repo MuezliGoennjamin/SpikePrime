@@ -170,15 +170,20 @@ class ReversiBoard:
 #                    Start Sequence                  #
 ######################################################
 async def start_sequence():
-
-    # get the distance of distance_sensor
-    distance = distance_sensor.distance(port.E)
-
     # start sequence to move the base platform over the tablet
-    while distance == 200: # if the distance is smaller than 200mm, move the robot in positive x-direction   
-        await motor.run_for_degrees(Motor_X1, 10, velocity_X1, stop=motor.CONTINUE)
+    motor.run(Motor_X1, velocity_X1)
 
-    await motor.run_to_relative_position(Motor_X1, 360, velocity_X1, stop=motor.HOLD, deceleration= 50)
+    while True:
+        distance = distance_sensor.distance(port.E)
+
+        if distance <= 90:
+            break
+
+        await runloop.sleep_ms(10)
+
+    await motor.run_for_degrees(Motor_X1, 90, velocity_X1, stop=motor.HOLD)
+
+    
 
 # function to calibrate actors
 async def calibration():
@@ -256,6 +261,7 @@ async def main():
             if column % 2 == 0:                                # even column
                 row = row + 1
 
+    await calibration()
     await start_sequence()
   
    
