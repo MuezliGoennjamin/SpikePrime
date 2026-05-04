@@ -41,11 +41,11 @@ async def Y2_relative(distance):    # [cm]
 
 # scan field for white or black token and save the data of the field
 def field_scan(position, board):
-    if color_sensor.color(port.F) is color.GREEN:
+    if color_sensor.color(port.D) is color.GREEN:
         board.set(position, 0)
-    elif color_sensor.color(port.F) is color.WHITE:
+    elif color_sensor.color(port.D) is color.WHITE:
         board.set(position, 1)
-    elif color_sensor.color(port.F) is color.BLACK:
+    elif color_sensor.color(port.D) is color.BLACK:
         board.set(position, 2)
 
 # ============================================
@@ -222,8 +222,8 @@ async def main():
         column = 65         # first column on the board in ASCII format
 
         await default_position()            # move to the default coordinate system position
-        await X2_relative(4)                # move to the first field (A8) in x-direction
-        await Y2_relative(2)                # move to the first field (A8) in y-direction
+        await X2_relative(2)                # move to the first field (A8) in x-direction
+        await Y2_relative(1)                # move to the first field (A8) in y-direction
 
         # scan field for white or black token
         field_scan("A8", board)
@@ -235,7 +235,7 @@ async def main():
                 row = 7
                 # scan each field of one column in positive x-direction
                 while row >= 1:
-                    await X2_relative(1.8)                                # move to the next field
+                    await X2_relative(2)                                # move to the next field
                     column_letter = chr(column)                         # convert the column number in the right letter (e.g. 65 to "A")
                     position = column_letter + str(row)                 # connects the column letter with the row number
 
@@ -246,7 +246,7 @@ async def main():
             else:
                 # scan each field of one column in negative x-direction
                 while row <= 8:
-                    await X2_relative(-1.8)                                # move to the next field
+                    await X2_relative(-2)                                # move to the next field
                     column_letter = chr(column)                        # convert the column number in the right letter (e.g. 65 to "A")
                     position = column_letter + str(row)                # connects the column letter with the row number
 
@@ -264,7 +264,7 @@ async def main():
             if column > 72:                                # end of the board reached
                 break
 
-            await Y2_relative(1.8)                               # move the robot to the next column (one field in positive Y2-direction)
+            await Y2_relative(2)                               # move the robot to the next column (one field in positive Y2-direction)
             column_letter = chr(column)                        # convert the column number in the right letter (e.g. 65 to "A")
             position = column_letter + str(row)                # connects the column letter with the row number
 
