@@ -11,41 +11,41 @@ velocity_X1 = 150
 velocity_X2 = 90
 velocity_Y2 = 100
 velocity_Z2 = 50
-Motor_X1 = port.A           # Hub Port A
-Motor_X2 = port.C           # Hub Port B
-Motor_Y2 = port.F           # Hub Port C
-Motor_Z2 = port.B           # Hub Port D
+Motor_X1 = port.A        # Hub Port A
+Motor_X2 = port.C        # Hub Port B
+Motor_Y2 = port.F        # Hub Port C
+Motor_Z2 = port.B        # Hub Port D
 
 
-###################################################### 
-#                    Functions                       #
+######################################################
+#                    Functions                    #
 ######################################################
 
 async def wait_for_left_button():
     print("Warte auf linken Button...")
-    while not button.left.is_pressed():
-        await runloop.sleep_ms(100)   # ⬅️ SPIKE-eigene Lösung
+    while not button.pressed(button.LEFT):
+        await runloop.sleep_ms(100)# ⬅️ SPIKE-eigene Lösung
     print("Gedrückt!")
 
 # sets the default position of the Coordinate System
 async def default_position():
-   await motor.run_to_absolute_position(Motor_X2, 0, velocity_X2)
-   await motor.run_to_absolute_position(Motor_Y2, 0, velocity_Y2)
-   await motor.run_to_absolute_position(Motor_Z2, 180, velocity_Z2)
+    await motor.run_to_absolute_position(Motor_X2, 0, velocity_X2)
+    await motor.run_to_absolute_position(Motor_Y2, 0, velocity_Y2)
+    await motor.run_to_absolute_position(Motor_Z2, 180, velocity_Z2)
 
 # defines the moving distance of the Motors
 async def X2_relative(distance):    # [cm]
     motor.run_for_degrees(Motor_X2, distance *55, velocity_X2)
 async def Y2_relative(distance):    # [cm]
-    motor.run_for_degrees(Motor_Y2, -distance *55, velocity_Y2)
+    motor.run_for_degrees(Motor_Y2, distance *55, velocity_Y2)
 
 # scan field for white or black token and save the data of the field
 def field_scan(position, board):
-    if color_sensor.color(port.F) is color.GREEN:
+    if color_sensor.color(port.D) is color.GREEN:
         board.set(position, 0)
-    elif color_sensor.color(port.F) is color.WHITE:
+    elif color_sensor.color(port.D) is color.WHITE:
         board.set(position, 1)
-    elif color_sensor.color(port.F) is color.BLACK:
+    elif color_sensor.color(port.D) is color.BLACK:
         board.set(position, 2)
 
 # ============================================
@@ -171,11 +171,11 @@ class ReversiBoard:
                 neighbors.append((neighbor_position, neighbor_value))
 
         return neighbors
-    
+
 
 
 ######################################################
-#                    Start Sequence                  #
+#                    Start Sequence                #
 ######################################################
 async def start_sequence():
     # start sequence to move the base platform over the tablet
@@ -213,13 +213,13 @@ async def main():
     board = ReversiBoard()
 
     ######################################################
-    #                    Playground Scan                 #
+    #                    Playground Scan                #
     ######################################################
     # scans each field on the playground for black and white tokens
     async def playground_scan():
         # default values
         row = 8
-        column = 65         # first column on the board in ASCII format
+        column = 65        # first column on the board in ASCII format
 
         await default_position()            # move to the default coordinate system position
         await X2_relative(4)                # move to the first field (A8) in x-direction
@@ -235,9 +235,9 @@ async def main():
                 row = 7
                 # scan each field of one column in positive x-direction
                 while row >= 1:
-                    await X2_relative(1.8)                                # move to the next field
-                    column_letter = chr(column)                         # convert the column number in the right letter (e.g. 65 to "A")
-                    position = column_letter + str(row)                 # connects the column letter with the row number
+                    await X2_relative(2)                                # move to the next field
+                    column_letter = chr(column)                        # convert the column number in the right letter (e.g. 65 to "A")
+                    position = column_letter + str(row)                # connects the column letter with the row number
 
                     # scan field for white or black token and save the data of the field
                     field_scan(position, board)
@@ -246,7 +246,7 @@ async def main():
             else:
                 # scan each field of one column in negative x-direction
                 while row <= 8:
-                    await X2_relative(-1.8)                                # move to the next field
+                    await X2_relative(-2)                                # move to the next field
                     column_letter = chr(column)                        # convert the column number in the right letter (e.g. 65 to "A")
                     position = column_letter + str(row)                # connects the column letter with the row number
 
@@ -259,12 +259,12 @@ async def main():
                 row = 1
             elif row == 9:
                 row = 8
-            
+
             column = column + 1                            # count up the column
             if column > 72:                                # end of the board reached
                 break
 
-            await Y2_relative(1.8)                               # move the robot to the next column (one field in positive Y2-direction)
+            await Y2_relative(2)                            # move the robot to the next column (one field in positive Y2-direction)
             column_letter = chr(column)                        # convert the column number in the right letter (e.g. 65 to "A")
             position = column_letter + str(row)                # connects the column letter with the row number
 
