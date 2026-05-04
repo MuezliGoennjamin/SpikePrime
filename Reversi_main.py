@@ -1,6 +1,6 @@
 import runloop
 import motor, distance_sensor, color_sensor, color
-from hub import port, button, asyncio
+from hub import port, button
 
 # Programm auf kleines Feld agestimmt
 
@@ -21,12 +21,11 @@ Motor_Z2 = port.B           # Hub Port D
 #                    Functions                       #
 ######################################################
 
-
 async def wait_for_left_button():
     print("Warte auf linken Button...")
     while not button.left.is_pressed():
-        await asyncio.sleep(0.1)  # kleine Pause, damit CPU nicht blockiert
-    print("Linker Button gedrückt!")
+        await runloop.sleep_ms(100)   # ⬅️ SPIKE-eigene Lösung
+    print("Gedrückt!")
 
 # sets the default position of the Coordinate System
 async def default_position():
