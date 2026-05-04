@@ -12,9 +12,9 @@ velocity_X2 = 90
 velocity_Y2 = 100
 velocity_Z2 = 50
 Motor_X1 = port.A           # Hub Port A
-Motor_X2 = port.B           # Hub Port B
-Motor_Y2 = port.C           # Hub Port C
-Motor_Z2 = port.D           # Hub Port D
+Motor_X2 = port.C           # Hub Port B
+Motor_Y2 = port.F           # Hub Port C
+Motor_Z2 = port.B           # Hub Port D
 
 
 ###################################################### 
