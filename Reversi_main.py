@@ -29,9 +29,9 @@ async def default_position():
 
 # defines the moving distance of the Motors
 async def X2_relative(distance):    # [cm]
-    motor.run_for_degrees(Motor_X2, distance *90, velocity_X2)
+    motor.run_for_degrees(Motor_X2, distance *55, velocity_X2)
 async def Y2_relative(distance):    # [cm]
-    motor.run_for_degrees(Motor_Y2, -distance *90, velocity_Y2)
+    motor.run_for_degrees(Motor_Y2, -distance *55, velocity_Y2)
 
 # scan field for white or black token and save the data of the field
 def field_scan(position, board):
@@ -178,12 +178,12 @@ async def start_sequence():
     while True:
         distance = distance_sensor.distance(port.E)
 
-        if distance <= 90:
+        if distance <= 110:
             break
 
         await runloop.sleep_ms(10)
 
-    await motor.run_for_degrees(Motor_X1, 90, velocity_X1, stop=motor.HOLD)
+    await motor.run_for_degrees(Motor_X1, 10, velocity_X1, stop=motor.HOLD)
 
 
 # function to calibrate actors
