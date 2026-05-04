@@ -229,7 +229,7 @@ async def main():
                 row = 7
                 # scan each field of one column in positive x-direction
                 while row >= 1:
-                    await X2_relative(2)                                # move to the next field
+                    await X2_relative(1.8)                                # move to the next field
                     column_letter = chr(column)                         # convert the column number in the right letter (e.g. 65 to "A")
                     position = column_letter + str(row)                 # connects the column letter with the row number
 
@@ -240,7 +240,7 @@ async def main():
             else:
                 # scan each field of one column in negative x-direction
                 while row <= 8:
-                    await X2_relative(-2)                                # move to the next field
+                    await X2_relative(-1.8)                                # move to the next field
                     column_letter = chr(column)                        # convert the column number in the right letter (e.g. 65 to "A")
                     position = column_letter + str(row)                # connects the column letter with the row number
 
@@ -258,7 +258,7 @@ async def main():
             if column > 72:                                # end of the board reached
                 break
 
-            await Y2_relative(2)                               # move the robot to the next column (one field in positive Y2-direction)
+            await Y2_relative(1.8)                               # move the robot to the next column (one field in positive Y2-direction)
             column_letter = chr(column)                        # convert the column number in the right letter (e.g. 65 to "A")
             position = column_letter + str(row)                # connects the column letter with the row number
 
@@ -268,6 +268,7 @@ async def main():
             if column % 2 == 0:                                # even column
                 row = row + 1
 
+    await calibration()
     await start_sequence()
     await playground_scan()
 
