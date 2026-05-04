@@ -1,6 +1,6 @@
 import runloop
 import motor, distance_sensor, color_sensor, color
-from hub import port, button
+from hub import port, button, asyncio
 
 # Programm auf kleines Feld agestimmt
 
@@ -20,6 +20,13 @@ Motor_Z2 = port.B           # Hub Port D
 ###################################################### 
 #                    Functions                       #
 ######################################################
+
+
+async def wait_for_left_button():
+    print("Warte auf linken Button...")
+    while not button.left.is_pressed():
+        await asyncio.sleep(0.1)  # kleine Pause, damit CPU nicht blockiert
+    print("Linker Button gedrückt!")
 
 # sets the default position of the Coordinate System
 async def default_position():
@@ -269,7 +276,9 @@ async def main():
                 row = row + 1
 
     await calibration()
+    await wait_for_left_button()
     await start_sequence()
+    await wait_for_left_button()
     await playground_scan()
 
     print( board.get_all_positions() )
