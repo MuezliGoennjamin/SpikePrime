@@ -272,4 +272,6 @@ async def main():
     await start_sequence()
     await playground_scan()
 
+    print( board.get_all_positions() )
+
 runloop.run(main())
