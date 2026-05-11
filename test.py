@@ -99,7 +99,7 @@ async def X2_relative(distance):    # [cm]
 
     await motor.run_for_degrees(
         Motor_X2,
-        distance * 55,
+        distance * 50,
         velocity_X2
     )
 

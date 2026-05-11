@@ -35,7 +35,7 @@ async def default_position():
 
 # defines the moving distance of the Motors
 async def X2_relative(distance):    # [cm]
-    motor.run_for_degrees(Motor_X2, distance *55, velocity_X2)
+    motor.run_for_degrees(Motor_X2, distance *50, velocity_X2)
 async def Y2_relative(distance):    # [cm]
     motor.run_for_degrees(Motor_Y2, -distance *55, velocity_Y2)
 
