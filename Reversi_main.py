@@ -40,7 +40,7 @@ async def Y2_relative(distance):    # [cm]
     motor.run_for_degrees(Motor_Y2, -distance *55, velocity_Y2)
 
 # scan field for white or black token and save the data of the field
-def field_scan(position, board):
+async def field_scan(position, board):
     if color_sensor.color(port.D) is color.GREEN:
         board.set(position, 0)
     elif color_sensor.color(port.D) is color.WHITE:
@@ -222,8 +222,11 @@ async def main():
         column = 65         # first column on the board in ASCII format
 
         await default_position()            # move to the default coordinate system position
+        await wait_for_left_button()        # wait for the left button to be pressed to start the scan
         await X2_relative(2)                # move to the first field (A8) in x-direction
         await Y2_relative(1)                # move to the first field (A8) in y-direction
+
+        await wait_for_left_button()        # wait for the left button to be pressed to start the scan
 
         # scan field for white or black token
         field_scan("A8", board)
@@ -235,12 +238,14 @@ async def main():
                 row = 7
                 # scan each field of one column in positive x-direction
                 while row >= 1:
+
+                    await wait_for_left_button()        # wait for the left button to be pressed to start the scan
                     await X2_relative(2)                                # move to the next field
                     column_letter = chr(column)                         # convert the column number in the right letter (e.g. 65 to "A")
                     position = column_letter + str(row)                 # connects the column letter with the row number
 
                     # scan field for white or black token and save the data of the field
-                    field_scan(position, board)
+                    await field_scan(position, board)
                     row = row - 1
 
             else:
@@ -251,7 +256,7 @@ async def main():
                     position = column_letter + str(row)                # connects the column letter with the row number
 
                     # scan field for white or black token and save the data of the field
-                    field_scan(position, board)
+                    await field_scan(position, board)
                     row = row + 1
 
                 # exclude out of range values for the next iteration
@@ -269,7 +274,7 @@ async def main():
             position = column_letter + str(row)                # connects the column letter with the row number
 
             # scan field for white or black token and save the data of the field
-            field_scan(position, board)
+            await field_scan(position, board)
 
             if column % 2 == 0:                                # even column
                 row = row + 1
