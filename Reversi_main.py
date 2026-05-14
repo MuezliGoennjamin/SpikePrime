@@ -21,11 +21,20 @@ Motor_Z2 = port.B           # Hub Port D
 #                    Functions                       #
 ######################################################
 
-async def wait_for_left_button():
-    print("Warte auf linken Button...")
-    while not button.left.is_pressed():
-        await runloop.sleep_ms(100)   # ⬅️ SPIKE-eigene Lösung
-    print("Gedrückt!")
+async def wait_for_left_button(step=""):
+
+    print("--------------------------------")
+
+    if step != "":
+        print("WAIT:", step)
+    else:
+        print("WAIT FOR LEFT BUTTON")
+
+    while not button.pressed(button.LEFT):
+        await runloop.sleep_ms(100)
+
+    print("BUTTON PRESSED")
+    print("--------------------------------")
 
 # sets the default position of the Coordinate System
 async def default_position():
@@ -259,7 +268,6 @@ async def main():
                 # scan each field of one column in positive x-direction
                 while row >= 1:
 
-                    await wait_for_left_button()        # wait for the left button to be pressed to start the scan
                     await X2_relative(18)                                # move to the next field
                     column_letter = chr(column)                         # convert the column number in the right letter (e.g. 65 to "A")
                     position = column_letter + str(row)                 # connects the column letter with the row number
