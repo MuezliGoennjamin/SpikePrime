@@ -41,13 +41,20 @@ async def Y2_relative(distance):    # [cm]
 
 # scan field for white or black token and save the data of the field
 async def field_scan(position, board):
-    if color_sensor.color(port.D) is color.GREEN:
-        board.set(position, 0)
-    elif color_sensor.color(port.D) is color.WHITE:
-        board.set(position, 1)
-    elif color_sensor.color(port.D) is color.BLACK:
-        board.set(position, 2)
 
+    # wait a certain time to detect the color 
+    await runloop.sleep_ms(500)
+
+    detected_color = color_sensor.color(port.D)
+
+    if detected_color is color.GREEN:
+        board.set(position, 0)
+
+    elif detected_color is color.WHITE:
+        board.set(position, 1)
+
+    elif detected_color is color.BLACK:
+        board.set(position, 2)
 # ============================================
 # Reversi Board - Game Field Management
 # ============================================
@@ -229,7 +236,7 @@ async def main():
         await wait_for_left_button()        # wait for the left button to be pressed to start the scan
 
         # scan field for white or black token
-        field_scan("A8", board)
+        await field_scan("A8", board)
 
         # scan each column
         while column <= 72:

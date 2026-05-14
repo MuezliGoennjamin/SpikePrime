@@ -121,11 +121,17 @@ async def Y2_relative(distance):    # [cm]
 
 
 # scan field for white or black token and save the data of the field
-def field_scan(position, board):
+# scan field for white or black token and save the data of the field
+async def field_scan(position, board):
+
+    debug("SCAN FIELD -> " + position)
+    debug("WAIT 500ms FOR STABLE COLOR DETECTION")
+
+    # kurze Wartezeit für stabile Farberkennung
+    await runloop.sleep_ms(500)
 
     detected_color = color_sensor.color(port.D)
 
-    debug("SCAN FIELD -> " + position)
     debug("Detected Color = " + str(detected_color))
 
     if detected_color is color.GREEN:
@@ -311,7 +317,7 @@ async def main():
         )
 
         # scan field for white or black token
-        field_scan("A8", board)
+        await field_scan("A8", board)
 
         # scan each column
         while column <= 72:
@@ -343,7 +349,7 @@ async def main():
                     debug("POSITION REACHED -> " + position)
 
                     # scan field
-                    field_scan(position, board)
+                    await field_scan(position, board)
 
                     row = row - 1
 
@@ -368,7 +374,7 @@ async def main():
                     debug("POSITION REACHED -> " + position)
 
                     # scan field
-                    field_scan(position, board)
+                    await field_scan(position, board)
 
                     row = row + 1
 
@@ -389,6 +395,12 @@ async def main():
 
                 break
 
+            debug("--------------------------------")
+            debug("COLUMN TRANSITION")
+            debug("LAST ROW IN COLUMN = " + str(row))
+            debug("MOVE TO NEXT COLUMN -> " + chr(column + 1))
+            debug("--------------------------------")
+
             await Y2_relative(2)
 
             column_letter = chr(column)
@@ -397,7 +409,7 @@ async def main():
             debug("COLUMN CHANGED -> " + position)
 
             # scan field
-            field_scan(position, board)
+            await field_scan(position, board)
 
             if column % 2 == 0:
                 row = row + 1
