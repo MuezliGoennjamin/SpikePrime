@@ -34,10 +34,23 @@ async def default_position():
    await motor.run_to_absolute_position(Motor_Z2, 180, velocity_Z2)
 
 # defines the moving distance of the Motors
-async def X2_relative(distance):    # [cm]
-    motor.run_for_degrees(Motor_X2, distance *50, velocity_X2)
-async def Y2_relative(distance):    # [cm]
-    motor.run_for_degrees(Motor_Y2, -distance *55, velocity_Y2)
+async def X2_relative(distance):    # [mm]
+
+
+    await motor.run_for_degrees(
+        Motor_X2,
+        distance * 5,
+        velocity_X2
+    )
+
+async def Y2_relative(distance):    # [mm]
+
+
+    await motor.run_for_degrees(
+        Motor_Y2,
+        -distance * 5,
+        velocity_Y2
+    )
 
 # scan field for white or black token and save the data of the field
 async def field_scan(position, board):
@@ -230,8 +243,8 @@ async def main():
 
         await default_position()            # move to the default coordinate system position
         await wait_for_left_button()        # wait for the left button to be pressed to start the scan
-        await X2_relative(2)                # move to the first field (A8) in x-direction
-        await Y2_relative(1)                # move to the first field (A8) in y-direction
+        await X2_relative(18)                # move to the first field (A8) in x-direction
+        await Y2_relative(20)                # move to the first field (A8) in y-direction
 
         await wait_for_left_button()        # wait for the left button to be pressed to start the scan
 
@@ -247,7 +260,7 @@ async def main():
                 while row >= 1:
 
                     await wait_for_left_button()        # wait for the left button to be pressed to start the scan
-                    await X2_relative(2)                                # move to the next field
+                    await X2_relative(18)                                # move to the next field
                     column_letter = chr(column)                         # convert the column number in the right letter (e.g. 65 to "A")
                     position = column_letter + str(row)                 # connects the column letter with the row number
 
@@ -258,7 +271,7 @@ async def main():
             else:
                 # scan each field of one column in negative x-direction
                 while row <= 8:
-                    await X2_relative(-2)                                # move to the next field
+                    await X2_relative(-18)                                # move to the next field
                     column_letter = chr(column)                        # convert the column number in the right letter (e.g. 65 to "A")
                     position = column_letter + str(row)                # connects the column letter with the row number
 
@@ -276,7 +289,10 @@ async def main():
             if column > 72:                                # end of the board reached
                 break
 
-            await Y2_relative(2)                               # move the robot to the next column (one field in positive Y2-direction)
+            await runloop.sleep_ms(2000) #testweise
+
+
+            await Y2_relative(20)                               # move the robot to the next column (one field in positive Y2-direction)
             column_letter = chr(column)                        # convert the column number in the right letter (e.g. 65 to "A")
             position = column_letter + str(row)                # connects the column letter with the row number
 

@@ -92,28 +92,28 @@ async def default_position():
 
 
 # defines the moving distance of the Motors
-async def X2_relative(distance):    # [cm]
+async def X2_relative(distance):    # [mm]
 
     debug("X2 MOVE")
     debug("distance = " + str(distance))
 
     await motor.run_for_degrees(
         Motor_X2,
-        distance * 50,
+        distance * 5,
         velocity_X2
     )
 
     debug("X2 MOVE FINISHED")
 
 
-async def Y2_relative(distance):    # [cm]
+async def Y2_relative(distance):    # [mm]
 
     debug("Y2 MOVE")
     debug("distance = " + str(distance))
 
     await motor.run_for_degrees(
         Motor_Y2,
-        -distance * 55,
+        -distance * 5,
         velocity_Y2
     )
 
@@ -306,9 +306,9 @@ async def main():
             "Default Position erreicht"
         )
 
-        await X2_relative(2)
+        await X2_relative(18)
 
-        await Y2_relative(1)
+        await Y2_relative(10)
 
         debug("Moved to A8")
 
@@ -344,7 +344,7 @@ async def main():
                         "Vor Bewegung zu " + position
                     )
 
-                    await X2_relative(2)
+                    await X2_relative(18)
 
                     debug("POSITION REACHED -> " + position)
 
@@ -369,7 +369,7 @@ async def main():
                         "Vor Bewegung zu " + position
                     )
 
-                    await X2_relative(-2)
+                    await X2_relative(-18)
 
                     debug("POSITION REACHED -> " + position)
 
@@ -401,7 +401,9 @@ async def main():
             debug("MOVE TO NEXT COLUMN -> " + chr(column + 1))
             debug("--------------------------------")
 
-            await Y2_relative(2)
+            await runloop.sleep_ms(2000) #testweise
+
+            await Y2_relative(20)
 
             column_letter = chr(column)
             position = column_letter + str(row)
