@@ -1,24 +1,38 @@
 from pybricks.parameters import Port, Color
 from pybricks.pupdevices import ColorSensor
-from pybricks.tools import wait
+from pybricks.tools import wait, multitask, run_task
 
-# Initialize the sensor.
+# Sensor initialisieren
 sensor = ColorSensor(Port.D)
 
-def main():
-    # Turn the sensor light ON (e.g. white for best color detection)
+# --------------------------------------------------
+# Hintergrund-Task: Licht dauerhaft setzen
+# --------------------------------------------------
+async def light_task():
     while True:
-        sensor.lights.on()
+        # konstantes Licht (grün hier als Beispiel)
+        sensor.lights.on([0, 20, 0])
+        await wait(100)
 
-        print(sensor.color())
-        wait(500)
-        print(sensor.color())
-        wait(2000)
-        sensor.lights.off()
-        wait(2000)
-        sensor.lights.on(20)
+# --------------------------------------------------
+# Haupt-Task: Farbe + Helligkeit ausgeben
+# --------------------------------------------------
 
-main()
+
+# --------------------------------------------------
+# Main
+# --------------------------------------------------
+async def main():
+    await multitask(
+        light_task()
+)
+
+    print("Farbe:", sensor.color())
+    print("Reflex:", sensor.reflection())
+    print("----------------------")
+    await wait(500)
+# Start
+run_task(main())
 
 
 
