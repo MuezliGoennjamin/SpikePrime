@@ -119,6 +119,36 @@ async def Y2_relative(distance):    # [mm]
 
     debug("Y2 MOVE FINISHED")
 
+async def Z2_tap():
+
+    debug("Z2 TAP START")
+
+    await wait_for_left_button(
+        "Vor Bildschirm-Tipp"
+    )
+
+    await motor.run_to_absolute_position(
+        Motor_Z2,
+        110,
+        velocity_Z2
+    )
+
+    debug("Z2 DOWN")
+
+    await runloop.sleep_ms(300)
+
+    await motor.run_to_absolute_position(
+        Motor_Z2,
+        180,
+        velocity_Z2
+    )
+
+    debug("Z2 UP")
+
+    await runloop.sleep_ms(300)
+
+    debug("Z2 TAP END")
+
 
 # scan field for white or black token and save the data of the field
 # scan field for white or black token and save the data of the field
@@ -217,6 +247,251 @@ class ReversiBoard:
                 all_positions.append((position, value))
 
         return all_positions
+
+# ============================================
+#              REVERSI AI
+# ============================================
+
+DIRECTIONS = [
+    (-1, -1),
+    (-1, 0),
+    (-1, 1),
+    (0, -1),
+    (0, 1),
+    (1, -1),
+    (1, 0),
+    (1, 1)
+]
+
+ROBOT_COLOR = 2
+ENEMY_COLOR = 1
+
+
+def is_on_board(row, col):
+
+    return row >= 0 and row < 8 and col >= 0 and col < 8
+
+
+def indices_to_position(row, col):
+
+    column_letter = chr(ord('A') + col)
+    row_number = str(row + 1)
+
+    return column_letter + row_number
+
+
+def get_flippable_tokens(board, position, player):
+
+    debug("CHECK MOVE -> " + position)
+
+    opponent = ENEMY_COLOR if player == ROBOT_COLOR else ROBOT_COLOR
+
+    row, col = board._parse_position(position)
+
+    # occupied
+    if board.board[row][col] != 0:
+
+        debug(position + " OCCUPIED")
+
+        return []
+
+    flippable = []
+
+    for row_dir, col_dir in DIRECTIONS:
+
+        current_row = row + row_dir
+        current_col = col + col_dir
+
+        direction_tokens = []
+
+        while is_on_board(current_row, current_col):
+
+            current_value = board.board[current_row][current_col]
+
+            if current_value == opponent:
+
+                direction_tokens.append(
+                    (current_row, current_col)
+                )
+
+            elif current_value == player:
+
+                if len(direction_tokens) > 0:
+
+                    flippable.extend(direction_tokens)
+
+                break
+
+            else:
+                break
+
+            current_row += row_dir
+            current_col += col_dir
+
+    debug("FLIPPABLE = " + str(len(flippable)))
+
+    return flippable
+
+
+def get_valid_moves(board, player):
+
+    debug("GET VALID MOVES")
+
+    valid_moves = []
+
+    for row in range(8):
+
+        for col in range(8):
+
+            position = indices_to_position(row, col)
+
+            flippable = get_flippable_tokens(
+                board,
+                position,
+                player
+            )
+
+            if len(flippable) > 0:
+
+                valid_moves.append(
+                    (position, len(flippable))
+                )
+
+                debug("VALID MOVE -> " + position)
+
+    return valid_moves
+
+
+def evaluate_move(position, flips):
+
+    score = flips
+
+    if position in ["A1", "A8", "H1", "H8"]:
+        score += 100
+
+    elif (
+        position[0] in ["A", "H"]
+        or
+        position[1] in ["1", "8"]
+    ):
+        score += 20
+
+    elif position in [
+        "B1", "A2", "B2",
+        "G1", "H2", "G2",
+        "A7", "B7", "B8",
+        "G7", "G8", "H7"
+    ]:
+        score -= 25
+
+    debug(position + " SCORE = " + str(score))
+
+    return score
+
+
+def get_best_move(board, player):
+
+    debug("CALCULATE BEST MOVE")
+
+    valid_moves = get_valid_moves(board, player)
+
+    if len(valid_moves) == 0:
+
+        debug("NO VALID MOVES")
+
+        return None
+
+    best_move = None
+    best_score = -9999
+
+    for position, flips in valid_moves:
+
+        score = evaluate_move(position, flips)
+
+        if score > best_score:
+
+            best_score = score
+            best_move = position
+
+    debug("BEST MOVE = " + str(best_move))
+    debug("BEST SCORE = " + str(best_score))
+
+    return best_move
+
+
+def apply_move(board, position, player):
+
+    debug("APPLY MOVE -> " + position)
+
+    flippable = get_flippable_tokens(
+        board,
+        position,
+        player
+    )
+
+    board.set(position, player)
+
+    for row, col in flippable:
+
+        flip_position = indices_to_position(row, col)
+
+        debug("FLIP -> " + flip_position)
+
+        board.set(flip_position, player)
+
+# ============================================
+#          ROBOT MOVEMENT
+# ============================================
+
+async def move_to_position(position):
+
+    debug("MOVE TO POSITION START")
+
+    debug("TARGET = " + position)
+
+    row = int(position[1])
+    col = ord(position[0]) - ord('A')
+
+    debug("ROW = " + str(row))
+    debug("COL = " + str(col))
+
+    x_distance = (8 - row) * 18
+    y_distance = col * 20
+
+    debug("X DISTANCE = " + str(x_distance))
+    debug("Y DISTANCE = " + str(y_distance))
+
+    await wait_for_left_button(
+        "Vor Bewegung zum Spielzug"
+    )
+
+    await default_position()
+
+    debug("MOVE X")
+
+    await X2_relative(18 + x_distance)
+
+    debug("MOVE Y")
+
+    await Y2_relative(20 + y_distance)
+
+    debug("TARGET REACHED")
+
+    await wait_for_left_button(
+        "Vor Touch-Eingabe"
+    )
+
+    await Z2_tap()
+
+    debug("TOKEN PLACED")
+
+    await wait_for_left_button(
+        "Vor Rückfahrt"
+    )
+
+    await default_position()
+
+    debug("MOVE TO POSITION END")
 
 
 ######################################################
@@ -418,7 +693,67 @@ async def main():
 
         debug("PLAYGROUND SCAN END")
 
+        ######################################################
+    #                 REVERSI GAME LOOP                  #
+    ######################################################
 
+    async def reversi_turn():
+
+        debug("================================")
+        debug("REVERSI TURN START")
+        debug("================================")
+
+        await playground_scan()
+
+        debug("SCAN FINISHED")
+
+        print(board.get_all_positions())
+
+        await wait_for_left_button(
+            "Nach Spielfeldscan"
+        )
+
+        best_move = get_best_move(
+            board,
+            ROBOT_COLOR
+        )
+
+        if best_move is None:
+
+            print("NO VALID MOVE")
+
+            debug("NO VALID MOVE")
+
+            return
+
+        print("BEST MOVE:", best_move)
+
+        debug("BEST MOVE = " + best_move)
+
+        await wait_for_left_button(
+            "Vor Roboterzug"
+        )
+
+        await move_to_position(best_move)
+
+        debug("MOVE EXECUTED")
+
+        apply_move(
+            board,
+            best_move,
+            ROBOT_COLOR
+        )
+
+        debug("BOARD UPDATED")
+
+        print(board.get_all_positions())
+
+        await wait_for_left_button(
+            "Gegner hat Zug ausgeführt"
+        )
+
+        debug("TURN FINISHED")
+   
     await calibration()
 
     await wait_for_left_button(
@@ -431,11 +766,9 @@ async def main():
         "Vor Playground Scan"
     )
 
-    await playground_scan()
+    while True:
 
-    print(board.get_all_positions())
-
-    debug("PROGRAM END")
+        await reversi_turn()
 
 
 runloop.run(main())

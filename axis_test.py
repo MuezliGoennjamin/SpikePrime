@@ -17,12 +17,31 @@ Motor_Y2 = port.C           # Hub Port C
 Motor_Z2 = port.D           # Hub Port D
 height_tablet = 15          # [mm]
 
+# tap on the touchscreen to place the token
+async def Z2_tap():
+
+    # press down
+    await motor.run_to_absolute_position(
+        Motor_Z2,
+        110,
+        velocity_Z2
+    )
+
+    # short press time
+    await runloop.sleep_ms(300)
+
+    # move back up
+    await motor.run_to_absolute_position(
+        Motor_Z2,
+        180,
+        velocity_Z2
+    )
+
+    # wait for stable end position
+    await runloop.sleep_ms(300)
 
 async def main():
-    await motor.run_for_degrees(Motor_X1, 720, velocity_X1)
-    await motor.run_for_degrees(Motor_X2, 1440, velocity_X2)
-    await motor.run_for_degrees(Motor_Y2, 720, velocity_Y2)
-    await motor.run_for_degrees(Motor_Z2, 90, velocity_Z2)
+    await Z2_tap()
 
 runloop.run(main())
 

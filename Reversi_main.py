@@ -61,6 +61,29 @@ async def Y2_relative(distance):    # [mm]
         velocity_Y2
     )
 
+# tap on the touchscreen to place the token
+async def Z2_tap():
+
+    # press down
+    await motor.run_to_absolute_position(
+        Motor_Z2,
+        110,
+        velocity_Z2
+    )
+
+    # short press time
+    await runloop.sleep_ms(300)
+
+    # move back up
+    await motor.run_to_absolute_position(
+        Motor_Z2,
+        180,
+        velocity_Z2
+    )
+
+    # wait for stable end position
+    await runloop.sleep_ms(300)
+
 # scan field for white or black token and save the data of the field
 async def field_scan(position, board):
 
@@ -201,7 +224,216 @@ class ReversiBoard:
 
         return neighbors
     
+# ============================================
+#              REVERSI AI
+# ============================================
+# directions for checking fields
+DIRECTIONS = [
+    (-1, -1),
+    (-1, 0),
+    (-1, 1),
+    (0, -1),
+    (0, 1),
+    (1, -1),
+    (1, 0),
+    (1, 1)
+]
 
+ROBOT_COLOR = 2      # black
+ENEMY_COLOR = 1      # white
+
+
+def is_on_board(row, col):
+
+    return row >= 0 and row < 8 and col >= 0 and col < 8
+
+
+def indices_to_position(row, col):
+
+    column_letter = chr(ord('A') + col)
+    row_number = str(row + 1)
+
+    return column_letter + row_number
+
+
+def get_flippable_tokens(board, position, player):
+
+    opponent = ENEMY_COLOR if player == ROBOT_COLOR else ROBOT_COLOR
+
+    row, col = board._parse_position(position)
+
+    # field already occupied
+    if board.board[row][col] != 0:
+        return []
+
+    flippable = []
+
+    # check all directions
+    for row_dir, col_dir in DIRECTIONS:
+
+        current_row = row + row_dir
+        current_col = col + col_dir
+
+        direction_tokens = []
+
+        while is_on_board(current_row, current_col):
+
+            current_value = board.board[current_row][current_col]
+
+            # opponent token
+            if current_value == opponent:
+
+                direction_tokens.append(
+                    (current_row, current_col)
+                )
+
+            # own token -> valid direction
+            elif current_value == player:
+
+                if len(direction_tokens) > 0:
+                    flippable.extend(direction_tokens)
+
+                break
+
+            # empty field
+            else:
+                break
+
+            current_row += row_dir
+            current_col += col_dir
+
+    return flippable
+
+
+def get_valid_moves(board, player):
+
+    valid_moves = []
+
+    for row in range(8):
+
+        for col in range(8):
+
+            position = indices_to_position(row, col)
+
+            flippable = get_flippable_tokens(
+                board,
+                position,
+                player
+            )
+
+            if len(flippable) > 0:
+
+                valid_moves.append(
+                    (position, len(flippable))
+                )
+
+    return valid_moves
+
+
+def evaluate_move(position, flips):
+
+    score = flips
+
+    # corners are extremely valuable
+    if position in ["A1", "A8", "H1", "H8"]:
+        score += 100
+
+    # edges are strong
+    elif (
+        position[0] in ["A", "H"]
+        or
+        position[1] in ["1", "8"]
+    ):
+        score += 20
+
+    # avoid dangerous fields near corners
+    elif position in [
+        "B1", "A2", "B2",
+        "G1", "H2", "G2",
+        "A7", "B7", "B8",
+        "G7", "G8", "H7"
+    ]:
+        score -= 25
+
+    return score
+
+
+def get_best_move(board, player):
+
+    valid_moves = get_valid_moves(board, player)
+
+    if len(valid_moves) == 0:
+        return None
+
+    best_move = None
+    best_score = -9999
+
+    for position, flips in valid_moves:
+
+        score = evaluate_move(position, flips)
+
+        if score > best_score:
+
+            best_score = score
+            best_move = position
+
+    return best_move
+
+
+def apply_move(board, position, player):
+
+    flippable = get_flippable_tokens(
+        board,
+        position,
+        player
+    )
+
+    # place token
+    board.set(position, player)
+
+    # flip enemy tokens
+    for row, col in flippable:
+
+        flip_position = indices_to_position(row, col)
+
+        board.set(flip_position, player)
+    
+# ============================================
+#          ROBOT MOVEMENT
+# ============================================
+
+async def move_to_position(position):
+
+    # convert position
+    row = int(position[1])
+    col = ord(position[0]) - ord('A')
+
+    # movement values
+    # A8 corresponds to:
+    # X = 18 mm
+    # Y = 20 mm
+
+    x_distance = (8 - row) * 18
+    y_distance = col * 20
+
+    # move from default position
+    await default_position()
+
+    # move to target field
+    await X2_relative(18 + x_distance)
+    await Y2_relative(20 + y_distance)
+
+    # short pause before tap
+    await runloop.sleep_ms(500)
+
+    # execute move on touchscreen
+    await Z2_tap()
+
+    # short wait after tap
+    await runloop.sleep_ms(500)
+
+    # move back to default position
+    await default_position()
 
 ######################################################
 #                    Start Sequence                  #
@@ -246,6 +478,7 @@ async def main():
     ######################################################
     # scans each field on the playground for black and white tokens
     async def playground_scan():
+
         # default values
         row = 8
         column = 65         # first column on the board in ASCII format
@@ -309,13 +542,58 @@ async def main():
 
             if column % 2 == 0:                                # even column
                 row = row + 1
+    
+    ######################################################
+    #                 REVERSI GAME LOOP                  #
+    ######################################################
+
+    async def reversi_turn():
+
+        print("SCAN PLAYGROUND")
+
+        await playground_scan()
+
+        print(board.get_all_positions())
+
+        # calculate best move
+        best_move = get_best_move(
+            board,
+            ROBOT_COLOR
+        )
+
+        if best_move is None:
+
+            print("NO VALID MOVE")
+            return
+
+        print("BEST MOVE:", best_move)
+
+        # move robot
+        await move_to_position(best_move)
+
+        # update board
+        apply_move(
+            board,
+            best_move,
+            ROBOT_COLOR
+        )
+
+        print("BOARD UPDATED")
+
+        print(board.get_all_positions())
+
+        # wait for enemy move
+        await wait_for_left_button(
+            "Gegner hat Zug ausgeführt"
+        )
 
     await calibration()
     await wait_for_left_button()
     await start_sequence()
     await wait_for_left_button()
-    await playground_scan()
+    
+    while True:
 
-    print( board.get_all_positions() )
+        await reversi_turn()
 
 runloop.run(main())
