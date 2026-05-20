@@ -1,10 +1,10 @@
 from pybricks.hubs import PrimeHub
 from pybricks.pupdevices import Motor, ColorSensor, UltrasonicSensor
 from pybricks.parameters import Port, Color, Button, Stop
-from pybricks.tools import wait, run_task
+from pybricks.tools import wait
 
 # ============================================
-#               HUB + DEVICES
+# HUB + DEVICES
 # ============================================
 
 hub = PrimeHub()
@@ -18,7 +18,7 @@ distance_sensor = UltrasonicSensor(Port.E)
 color_sensor = ColorSensor(Port.D)
 
 # ============================================
-#               GLOBAL VALUES
+# GLOBALS
 # ============================================
 
 velocity_X1 = 150
@@ -26,21 +26,17 @@ velocity_X2 = 90
 velocity_Y2 = 100
 velocity_Z2 = 50
 
-Motor_X1 = motor_x1
-Motor_X2 = motor_x2
-Motor_Y2 = motor_y2
-Motor_Z2 = motor_z2
-
+ROBOT_COLOR = 2
+ENEMY_COLOR = 1
 
 # ============================================
-#            WAIT FOR LEFT BUTTON
+# BUTTON
 # ============================================
 
 def wait_for_left_button(step=""):
-
     print("--------------------------------")
 
-    if step != "":
+    if step:
         print("WAIT:", step)
     else:
         print("WAIT FOR LEFT BUTTON")
@@ -53,7 +49,7 @@ def wait_for_left_button(step=""):
 
 
 # ============================================
-#               MOTOR FUNCTIONS
+# MOTORS
 # ============================================
 
 def default_position():
@@ -78,7 +74,7 @@ def Z2_tap():
 
 
 # ============================================
-#               FIELD SCAN
+# FIELD SCAN
 # ============================================
 
 def field_scan(position, board):
@@ -98,63 +94,168 @@ def field_scan(position, board):
 
 
 # ============================================
-#               REVERSI BOARD
+# BOARD
 # ============================================
 
 class ReversiBoard:
 
     def __init__(self):
-        self.board = []
-        for row in range(8):
-            self.board.append([0] * 8)
+        self.board = [[0 for _ in range(8)] for _ in range(8)]
 
     def _parse_position(self, position):
-        column_letter = position[0].upper()
-        column_number = ord(column_letter) - ord('A')
-
-        row_number = int(position[1])
-        row_index = row_number - 1
-
-        return row_index, column_number
+        col = ord(position[0].upper()) - ord('A')
+        row = int(position[1]) - 1
+        return row, col
 
     def set(self, position, value):
-        row, col = self._parse_position(position)
-        self.board[row][col] = value
+        r, c = self._parse_position(position)
+        self.board[r][c] = value
 
     def get(self, position):
-        row, col = self._parse_position(position)
-        return self.board[row][col
-
-    def get_all_positions(self):
-        all_positions = []
-
-        for row in range(8):
-            for col in range(8):
-
-                position = chr(ord('A') + col) + str(row + 1)
-                value = self.board[row][col]
-
-                all_positions.append((position, value))
-
-        return all_positions
+        r, c = self._parse_position(position)
+        return self.board[r][c]
 
 
 # ============================================
-#              ROBOT MOVEMENT
+# AI CORE
+# ============================================
+
+DIRECTIONS = [
+    (-1,-1), (-1,0), (-1,1),
+    (0,-1),          (0,1),
+    (1,-1),  (1,0),  (1,1)
+]
+
+
+def is_on_board(r, c):
+    return 0 <= r < 8 and 0 <= c < 8
+
+
+def indices_to_position(r, c):
+    return chr(ord('A') + c) + str(r + 1)
+
+
+def get_flippable_tokens(board, position, player):
+
+    opponent = ENEMY_COLOR if player == ROBOT_COLOR else ROBOT_COLOR
+
+    r, c = board._parse_position(position)
+
+    if board.board[r][c] != 0:
+        return []
+
+    flips = []
+
+    for dr, dc in DIRECTIONS:
+
+        rr, cc = r + dr, c + dc
+        line = []
+
+        while is_on_board(rr, cc):
+
+            v = board.board[rr][cc]
+
+            if v == opponent:
+                line.append((rr, cc))
+
+            elif v == player:
+                if line:
+                    flips.extend(line)
+                break
+            else:
+                break
+
+            rr += dr
+            cc += dc
+
+    return flips
+
+
+def get_valid_moves(board, player):
+
+    moves = []
+
+    for r in range(8):
+        for c in range(8):
+
+            pos = indices_to_position(r, c)
+
+            flips = get_flippable_tokens(board, pos, player)
+
+            if flips:
+                moves.append((pos, len(flips)))
+
+    return moves
+
+
+def evaluate_move(position, flips):
+
+    score = flips
+
+    if position in ["A1","A8","H1","H8"]:
+        score += 100
+
+    elif position[0] in ["A","H"] or position[1] in ["1","8"]:
+        score += 20
+
+    elif position in [
+        "B1","A2","B2",
+        "G1","H2","G2",
+        "A7","B7","B8",
+        "G7","G8","H7"
+    ]:
+        score -= 25
+
+    return score
+
+
+def get_best_move(board, player):
+
+    moves = get_valid_moves(board, player)
+
+    if not moves:
+        return None
+
+    best = None
+    best_score = -9999
+
+    for pos, flips in moves:
+
+        score = evaluate_move(pos, flips)
+
+        if score > best_score:
+            best_score = score
+            best = pos
+
+    return best
+
+
+def apply_move(board, position, player):
+
+    flips = get_flippable_tokens(board, position, player)
+
+    board.set(position, player)
+
+    for r, c in flips:
+        board.board[r][c] = player
+
+
+# ============================================
+# ROBOT MOVE
 # ============================================
 
 def move_to_position(position):
 
-    row = int(position[1])
-    col = ord(position[0]) - ord('A')
+    r = int(position[1])
+    c = ord(position[0]) - ord('A')
 
-    x_distance = (8 - row) * 18
-    y_distance = col * 20
+    x = (8 - r) * 18
+    y = c * 20
 
     default_position()
 
-    X2_relative(18 + x_distance)
-    Y2_relative(20 + y_distance)
+    X2_relative(18 + x)
+    Y2_relative(20 + y)
 
     wait(500)
 
@@ -166,7 +267,7 @@ def move_to_position(position):
 
 
 # ============================================
-#              START SEQUENCE
+# START
 # ============================================
 
 def start_sequence():
@@ -174,9 +275,9 @@ def start_sequence():
     motor_x1.run(velocity_X1)
 
     while True:
-        distance = distance_sensor.distance()
+        d = distance_sensor.distance()
 
-        if distance <= 110:
+        if d <= 110:
             break
 
         wait(10)
@@ -185,7 +286,7 @@ def start_sequence():
 
 
 # ============================================
-#              CALIBRATION
+# CALIBRATION
 # ============================================
 
 def calibration():
@@ -199,53 +300,45 @@ def calibration():
 
     print("Kalibriert")
 
-    print(
-        motor_x2.angle(),
-        motor_y2.angle(),
-        motor_z2.angle()
-    )
-
 
 # ============================================
-#            PLAYGROUND SCAN
+# SCAN
 # ============================================
 
 def playground_scan(board):
 
     row = 8
-    column = 65
+    col = 65
 
     default_position()
 
-    wait_for_left_button("Start Scan")
+    wait_for_left_button("Scan Start")
 
     X2_relative(18)
     Y2_relative(20)
 
     field_scan("A8", board)
 
-    while column <= 72:
+    while col <= 72:
 
         if row == 8:
             row = 7
 
             while row >= 1:
-
-                position = chr(column) + str(row)
+                pos = chr(col) + str(row)
 
                 X2_relative(18)
-                field_scan(position, board)
+                field_scan(pos, board)
 
                 row -= 1
 
         else:
 
             while row <= 8:
-
-                position = chr(column) + str(row)
+                pos = chr(col) + str(row)
 
                 X2_relative(-18)
-                field_scan(position, board)
+                field_scan(pos, board)
 
                 row += 1
 
@@ -254,38 +347,47 @@ def playground_scan(board):
         elif row == 9:
             row = 8
 
-        column += 1
+        col += 1
 
-        if column > 72:
+        if col > 72:
             break
 
         Y2_relative(20)
 
-        position = chr(column) + str(row)
-        field_scan(position, board)
+        pos = chr(col) + str(row)
+        field_scan(pos, board)
 
-        if column % 2 == 0:
+        if col % 2 == 0:
             row += 1
 
 
 # ============================================
-#              GAME LOOP
+# TURN
 # ============================================
 
 def reversi_turn(board):
 
-    print("SCAN PLAYGROUND")
+    print("SCAN")
 
     playground_scan(board)
 
-    print(board.get_all_positions())
+    move = get_best_move(board, ROBOT_COLOR)
 
-    wait_for_left_button("Enemy move")
+    if move is None:
+        print("NO MOVE")
+        return
 
+    print("BEST MOVE:", move)
+
+    move_to_position(move)
+
+    apply_move(board, move, ROBOT_COLOR)
+
+    wait_for_left_button("Enemy done")
 
 
 # ============================================
-#                  MAIN
+# MAIN
 # ============================================
 
 def main():
@@ -303,4 +405,4 @@ def main():
         reversi_turn(board)
 
 
-run_task(main())
+main()
