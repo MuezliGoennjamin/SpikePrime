@@ -67,7 +67,7 @@ async def Z2_tap():
     # press down
     await motor.run_to_absolute_position(
         Motor_Z2,
-        110,
+        180,
         velocity_Z2
     )
 
@@ -77,7 +77,7 @@ async def Z2_tap():
     # move back up
     await motor.run_to_absolute_position(
         Motor_Z2,
-        180,
+        140,
         velocity_Z2
     )
 
