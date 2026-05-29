@@ -87,7 +87,7 @@ async def Z2_tap():
 # scan field for white or black token and save the data of the field
 async def field_scan(position, board):
 
-    # wait a certain time to detect the color 
+    # wait a certain time to detect the color
     await runloop.sleep_ms(500)
 
     detected_color = color_sensor.color(port.D)
@@ -330,53 +330,87 @@ def get_valid_moves(board, player):
     return valid_moves
 
 
-def evaluate_move(position, flips):
+MINIMAX_DEPTH = 3
 
-    score = flips
 
-    # corners are extremely valuable
-    if position in ["A1", "A8", "H1", "H8"]:
-        score += 100
+def evaluate_board(board):
 
-    # edges are strong
-    elif (
-        position[0] in ["A", "H"]
-        or
-        position[1] in ["1", "8"]
-    ):
-        score += 20
+    score = 0
 
-    # avoid dangerous fields near corners
-    elif position in [
-        "B1", "A2", "B2",
-        "G1", "H2", "G2",
-        "A7", "B7", "B8",
-        "G7", "G8", "H7"
-    ]:
-        score -= 25
+    for row in range(8):
+        for col in range(8):
+            val = board.board[row][col]
+            if val == 0:
+                continue
+            pos = indices_to_position(row, col)
+            if pos in ["A1", "A8", "H1", "H8"]:
+                weight = 100
+            elif pos in ["B1", "A2", "B2", "G1", "H2", "G2", "A7", "B7", "B8", "G7", "G8", "H7"]:
+                weight = -25
+            elif pos[0] in "AH" or pos[1] in "18":
+                weight = 20
+            else:
+                weight = 1
+            if val == ROBOT_COLOR:
+                score += weight
+            else:
+                score -= weight
 
     return score
 
 
-def get_best_move(board, player):
+def copy_board_state(board):
+    return [row[:] for row in board.board]
 
+
+def restore_board_state(board, state):
+    for i in range(8):
+        board.board[i] = state[i][:]
+
+
+def minimax(board, depth, maximizing, alpha, beta):
+
+    player = ROBOT_COLOR if maximizing else ENEMY_COLOR
     valid_moves = get_valid_moves(board, player)
 
-    if len(valid_moves) == 0:
-        return None
+    if depth == 0 or len(valid_moves) == 0:
+        return evaluate_board(board), None
 
     best_move = None
-    best_score = -9999
 
-    for position, flips in valid_moves:
+    if maximizing:
+        best_val = -9999
+        for position, _ in valid_moves:
+            saved = copy_board_state(board)
+            apply_move(board, position, player)
+            val, _ = minimax(board, depth - 1, False, alpha, beta)
+            restore_board_state(board, saved)
+            if val > best_val:
+                best_val = val
+                best_move = position
+            alpha = max(alpha, val)
+            if beta <= alpha:
+                break
+        return best_val, best_move
 
-        score = evaluate_move(position, flips)
+    else:
+        best_val = 9999
+        for position, _ in valid_moves:
+            saved = copy_board_state(board)
+            apply_move(board, position, player)
+            val, _ = minimax(board, depth - 1, True, alpha, beta)
+            restore_board_state(board, saved)
+            if val < best_val:
+                best_val = val
+                best_move = position
+            beta = min(beta, val)
+            if beta <= alpha:
+                break
+        return best_val, best_move
 
-        if score > best_score:
 
-            best_score = score
-            best_move = position
-
+def get_best_move(board, _):
+    _, best_move = minimax(board, MINIMAX_DEPTH, True, -9999, 9999)
     return best_move
 
 
@@ -397,7 +431,61 @@ def apply_move(board, position, player):
         flip_position = indices_to_position(row, col)
 
         board.set(flip_position, player)
-    
+
+# ============================================
+#              DEBUG HELPERS
+# ============================================
+
+def print_board_debug(board):
+    print("  A B C D E F G H")
+    for row in range(8, 0, -1):
+        line = str(row) + " "
+        for col in range(8):
+            val = board.board[row - 1][col]
+            if val == 0:
+                line += ". "
+            elif val == ENEMY_COLOR:
+                line += "W "
+            elif val == ROBOT_COLOR:
+                line += "B "
+            else:
+                line += "? "
+        print(line)
+
+
+def validate_start_position(board):
+    """Prüft ob die 4 Anfangssteine korrekt erkannt wurden (D4/E4/D5/E5)."""
+    start_fields = ["D4", "E4", "D5", "E5"]
+    white = sum(1 for p in start_fields if board.get(p) == ENEMY_COLOR)
+    black = sum(1 for p in start_fields if board.get(p) == ROBOT_COLOR)
+    empty = sum(1 for p in start_fields if board.get(p) == 0)
+    total = sum(1 for _, v in board.get_all_positions() if v != 0)
+
+    print("STARTCHECK: W=" + str(white) + " S=" + str(black) + " LEER=" + str(empty))
+    print("STEINE GESAMT: " + str(total))
+
+    if total == 0:
+        print("!!! FEHLER: Keine Steine erkannt!")
+        print("!!! Roboter ist moeglicherweise nicht ueber dem Spielfeld")
+        print("!!! oder Farbsensor ist falsch kalibriert (Port pruefen)")
+        return False
+
+    if empty > 0:
+        print("!!! WARNUNG: " + str(empty) + " Anfangssteine in D4/E4/D5/E5 nicht erkannt!")
+        print("!!! Prüfe: Liegt der Sensor korrekt ueber den Mittelfeldern?")
+        print("!!! Prüfe: Stimmen die X/Y-Abstände (18mm / 20mm) fuer dein Feld?")
+        return False
+
+    if white != 2 or black != 2:
+        print("!!! WARNUNG: Unerwartete Startaufstellung erkannt!")
+        print("!!! Erwartet: 2 Weiss + 2 Schwarz in D4/E4/D5/E5")
+        print("!!! Erkannt:  W=" + str(white) + " S=" + str(black))
+        return False
+
+    print("STARTPOSITION OK")
+    return True
+
+
 # ============================================
 #          ROBOT MOVEMENT
 # ============================================
@@ -435,22 +523,6 @@ async def move_to_position(position):
     # move back to default position
     await default_position()
 
-######################################################
-#                    Start Sequence                  #
-######################################################
-async def start_sequence():
-    # start sequence to move the base platform over the tablet
-    motor.run(Motor_X1, velocity_X1)
-
-    while True:
-        distance = distance_sensor.distance(port.E)
-
-        if distance <= 110:
-            break
-
-        await runloop.sleep_ms(10)
-
-    await motor.run_for_degrees(Motor_X1, 10, velocity_X1, stop=motor.HOLD)
 
 
 # function to calibrate actors
@@ -479,69 +551,31 @@ async def main():
     # scans each field on the playground for black and white tokens
     async def playground_scan():
 
-        # default values
-        row = 8
-        column = 65         # first column on the board in ASCII format
+        await default_position()
+        await wait_for_left_button()
+        await X2_relative(18)
+        await Y2_relative(20)
+        await wait_for_left_button()
 
-        await default_position()            # move to the default coordinate system position
-        await wait_for_left_button()        # wait for the left button to be pressed to start the scan
-        await X2_relative(18)                # move to the first field (A8) in x-direction
-        await Y2_relative(20)                # move to the first field (A8) in y-direction
+        going_down = True   # True = Zeile 8→1 (+X), False = Zeile 1→8 (-X)
 
-        await wait_for_left_button()        # wait for the left button to be pressed to start the scan
+        for col_idx in range(8):
+            col_letter = chr(ord('A') + col_idx)
 
-        # scan field for white or black token
-        await field_scan("A8", board)
-
-        # scan each column
-        while column <= 72:
-
-            if row == 8:
-                row = 7
-                # scan each field of one column in positive x-direction
-                while row >= 1:
-
-                    await X2_relative(18)                                # move to the next field
-                    column_letter = chr(column)                         # convert the column number in the right letter (e.g. 65 to "A")
-                    position = column_letter + str(row)                 # connects the column letter with the row number
-
-                    # scan field for white or black token and save the data of the field
-                    await field_scan(position, board)
-                    row = row - 1
-
+            if going_down:
+                for row in range(8, 0, -1):
+                    await field_scan(col_letter + str(row), board)
+                    if row > 1:
+                        await X2_relative(18)
             else:
-                # scan each field of one column in negative x-direction
-                while row <= 8:
-                    await X2_relative(-18)                                # move to the next field
-                    column_letter = chr(column)                        # convert the column number in the right letter (e.g. 65 to "A")
-                    position = column_letter + str(row)                # connects the column letter with the row number
+                for row in range(1, 9):
+                    await field_scan(col_letter + str(row), board)
+                    if row < 8:
+                        await X2_relative(-18)
 
-                    # scan field for white or black token and save the data of the field
-                    await field_scan(position, board)
-                    row = row + 1
-
-                # exclude out of range values for the next iteration
-            if row == 0:
-                row = 1
-            elif row == 9:
-                row = 8
-            
-            column = column + 1                            # count up the column
-            if column > 72:                                # end of the board reached
-                break
-
-            await runloop.sleep_ms(2000) #testweise
-
-
-            await Y2_relative(20)                               # move the robot to the next column (one field in positive Y2-direction)
-            column_letter = chr(column)                        # convert the column number in the right letter (e.g. 65 to "A")
-            position = column_letter + str(row)                # connects the column letter with the row number
-
-            # scan field for white or black token and save the data of the field
-            await field_scan(position, board)
-
-            if column % 2 == 0:                                # even column
-                row = row + 1
+            if col_idx < 7:
+                await Y2_relative(20)
+                going_down = not going_down
     
     ######################################################
     #                 REVERSI GAME LOOP                  #
@@ -549,26 +583,32 @@ async def main():
 
     async def reversi_turn():
 
+        print("========== NEUER ZUG ==========")
         print("SCAN PLAYGROUND")
 
         await playground_scan()
 
-        print(board.get_all_positions())
+        print("--- SPIELFELD NACH SCAN ---")
+        print_board_debug(board)
+        white = sum(1 for _, v in board.get_all_positions() if v == ENEMY_COLOR)
+        black = sum(1 for _, v in board.get_all_positions() if v == ROBOT_COLOR)
+        print("Weiss (W):", white, "  Schwarz (B):", black)
 
         # calculate best move
+        print("BERECHNE BESTEN ZUG (Tiefe=" + str(MINIMAX_DEPTH) + ")...")
         best_move = get_best_move(
             board,
             ROBOT_COLOR
         )
 
         if best_move is None:
-
-            print("NO VALID MOVE")
+            print("KEIN GUELTIGER ZUG MOEGLICH - Zug wird uebersprungen")
             return
 
-        print("BEST MOVE:", best_move)
+        print("BESTER ZUG:", best_move)
 
         # move robot
+        print("BEWEGE ROBOTER ZU:", best_move)
         await move_to_position(best_move)
 
         # update board
@@ -578,9 +618,11 @@ async def main():
             ROBOT_COLOR
         )
 
-        print("BOARD UPDATED")
-
-        print(board.get_all_positions())
+        print("--- SPIELFELD NACH ROBOTERZUG ---")
+        print_board_debug(board)
+        white = sum(1 for _, v in board.get_all_positions() if v == ENEMY_COLOR)
+        black = sum(1 for _, v in board.get_all_positions() if v == ROBOT_COLOR)
+        print("Weiss (W):", white, "  Schwarz (B):", black)
 
         # wait for enemy move
         await wait_for_left_button(
@@ -589,9 +631,16 @@ async def main():
 
     await calibration()
     await wait_for_left_button()
-    await start_sequence()
     await wait_for_left_button()
-    
+
+    # Pre-Game: Startposition einmalig scannen und prüfen
+    print("PRE-GAME: SCAN STARTPOSITION")
+    await playground_scan()
+    print_board_debug(board)
+    start_ok = validate_start_position(board)
+    if not start_ok:
+        await wait_for_left_button("Startposition pruefen, dann fortfahren")
+
     while True:
 
         await reversi_turn()
