@@ -1,27 +1,32 @@
-import runloop
-import motor, distance_sensor, color_sensor, color
-from hub import port, button
+from pybricks.hubs import PrimeHub
+from pybricks.pupdevices import Motor, ColorSensor
+from pybricks.parameters import Port, Color, Button
+from pybricks.tools import wait
 
-# Programm auf kleines Feld agestimmt
+# Programm auf kleines Feld abgestimmt
 
-# Hub Anschluss: Motor X1 = Port A, Motor X2 = Port B, Motor Y2 = Port C, Motor Z2 = Port D, Distance Sensor = Port E, Color Sensor = Port F
+# Hub Anschluss: Motor X1 = Port A, Motor X2 = Port C, Motor Y2 = Port F, Motor Z2 = Port B, Color Sensor = Port D
 
-#global variables
+hub = PrimeHub()
+
+# global variables
 velocity_X1 = 150
 velocity_X2 = 90
 velocity_Y2 = 100
 velocity_Z2 = 50
-Motor_X1 = port.A           # Hub Port A
-Motor_X2 = port.C           # Hub Port B
-Motor_Y2 = port.F           # Hub Port C
-Motor_Z2 = port.B           # Hub Port D
+
+motor_X1 = Motor(Port.A)
+motor_X2 = Motor(Port.C)
+motor_Y2 = Motor(Port.F)
+motor_Z2 = Motor(Port.B)
+color_sensor = ColorSensor(Port.D)
 
 
-###################################################### 
+######################################################
 #                    Functions                       #
 ######################################################
 
-async def wait_for_left_button(step=""):
+def wait_for_left_button(step=""):
 
     print("--------------------------------")
 
@@ -30,76 +35,63 @@ async def wait_for_left_button(step=""):
     else:
         print("WAIT FOR LEFT BUTTON")
 
-    while not button.pressed(button.LEFT):
-        await runloop.sleep_ms(100)
+    while Button.LEFT not in hub.buttons.pressed():
+        wait(100)
 
     print("BUTTON PRESSED")
     print("--------------------------------")
 
+
 # sets the default position of the Coordinate System
-async def default_position():
-   await motor.run_to_absolute_position(Motor_X2, 0, velocity_X2)
-   await motor.run_to_absolute_position(Motor_Y2, 0, velocity_Y2)
-   await motor.run_to_absolute_position(Motor_Z2, 180, velocity_Z2)
+def default_position():
+    motor_X2.run_target(velocity_X2, 0)
+    motor_Y2.run_target(velocity_Y2, 0)
+    motor_Z2.run_target(velocity_Z2, 180)
+
 
 # defines the moving distance of the Motors
-async def X2_relative(distance):    # [mm]
+def X2_relative(distance):    # [mm]
+    motor_X2.run_angle(velocity_X2, distance * 5)
 
 
-    await motor.run_for_degrees(
-        Motor_X2,
-        distance * 5,
-        velocity_X2
-    )
+def Y2_relative(distance):    # [mm]
+    motor_Y2.run_angle(velocity_Y2, -distance * 5)
 
-async def Y2_relative(distance):    # [mm]
-
-
-    await motor.run_for_degrees(
-        Motor_Y2,
-        -distance * 5,
-        velocity_Y2
-    )
 
 # tap on the touchscreen to place the token
-async def Z2_tap():
+def Z2_tap():
 
     # press down
-    await motor.run_to_absolute_position(
-        Motor_Z2,
-        180,
-        velocity_Z2
-    )
+    motor_Z2.run_target(velocity_Z2, 180)
 
     # short press time
-    await runloop.sleep_ms(300)
+    wait(300)
 
     # move back up
-    await motor.run_to_absolute_position(
-        Motor_Z2,
-        140,
-        velocity_Z2
-    )
+    motor_Z2.run_target(velocity_Z2, 140)
 
     # wait for stable end position
-    await runloop.sleep_ms(300)
+    wait(300)
+
 
 # scan field for white or black token and save the data of the field
-async def field_scan(position, board):
+def field_scan(position, board):
 
     # wait a certain time to detect the color
-    await runloop.sleep_ms(500)
+    wait(500)
 
-    detected_color = color_sensor.color(port.D)
+    detected_color = color_sensor.color()
 
-    if detected_color is color.GREEN:
+    if detected_color == Color.GREEN:
         board.set(position, 0)
 
-    elif detected_color is color.WHITE:
+    elif detected_color == Color.WHITE:
         board.set(position, 1)
 
-    elif detected_color is color.BLACK:
+    elif detected_color == Color.BLACK:
         board.set(position, 2)
+
+
 # ============================================
 # Reversi Board - Game Field Management
 # ============================================
@@ -114,7 +106,7 @@ class ReversiBoard:
         for row in range(8):
             new_row = []
             for col in range(8):
-                new_row.append(0)# 0 means empty field
+                new_row.append(0)  # 0 means empty field
             self.board.append(new_row)
 
     def _parse_position(self, position):
@@ -193,14 +185,14 @@ class ReversiBoard:
         # All 8 possible directions to check
         # (row_change, column_change)
         all_directions = [
-            (-1, -1),# Top-left
-            (-1,0),# Top
-            (-1,1),# Top-right
-            ( 0, -1),# Left
-            ( 0,1),# Right
-            ( 1, -1),# Bottom-left
-            ( 1,0),# Bottom
-            ( 1,1)# Bottom-right
+            (-1, -1),  # Top-left
+            (-1,  0),  # Top
+            (-1,  1),  # Top-right
+            ( 0, -1),  # Left
+            ( 0,  1),  # Right
+            ( 1, -1),  # Bottom-left
+            ( 1,  0),  # Bottom
+            ( 1,  1)   # Bottom-right
         ]
 
         # Check each direction
@@ -223,20 +215,21 @@ class ReversiBoard:
                 neighbors.append((neighbor_position, neighbor_value))
 
         return neighbors
-    
+
+
 # ============================================
 #              REVERSI AI
 # ============================================
 # directions for checking fields
 DIRECTIONS = [
     (-1, -1),
-    (-1, 0),
-    (-1, 1),
-    (0, -1),
-    (0, 1),
-    (1, -1),
-    (1, 0),
-    (1, 1)
+    (-1,  0),
+    (-1,  1),
+    ( 0, -1),
+    ( 0,  1),
+    ( 1, -1),
+    ( 1,  0),
+    ( 1,  1)
 ]
 
 ROBOT_COLOR = 2      # black
@@ -244,15 +237,12 @@ ENEMY_COLOR = 1      # white
 
 
 def is_on_board(row, col):
-
     return row >= 0 and row < 8 and col >= 0 and col < 8
 
 
 def indices_to_position(row, col):
-
     column_letter = chr(ord('A') + col)
     row_number = str(row + 1)
-
     return column_letter + row_number
 
 
@@ -282,17 +272,12 @@ def get_flippable_tokens(board, position, player):
 
             # opponent token
             if current_value == opponent:
-
-                direction_tokens.append(
-                    (current_row, current_col)
-                )
+                direction_tokens.append((current_row, current_col))
 
             # own token -> valid direction
             elif current_value == player:
-
                 if len(direction_tokens) > 0:
                     flippable.extend(direction_tokens)
-
                 break
 
             # empty field
@@ -310,22 +295,11 @@ def get_valid_moves(board, player):
     valid_moves = []
 
     for row in range(8):
-
         for col in range(8):
-
             position = indices_to_position(row, col)
-
-            flippable = get_flippable_tokens(
-                board,
-                position,
-                player
-            )
-
+            flippable = get_flippable_tokens(board, position, player)
             if len(flippable) > 0:
-
-                valid_moves.append(
-                    (position, len(flippable))
-                )
+                valid_moves.append((position, len(flippable)))
 
     return valid_moves
 
@@ -416,21 +390,16 @@ def get_best_move(board, _):
 
 def apply_move(board, position, player):
 
-    flippable = get_flippable_tokens(
-        board,
-        position,
-        player
-    )
+    flippable = get_flippable_tokens(board, position, player)
 
     # place token
     board.set(position, player)
 
     # flip enemy tokens
     for row, col in flippable:
-
         flip_position = indices_to_position(row, col)
-
         board.set(flip_position, player)
+
 
 # ============================================
 #              DEBUG HELPERS
@@ -490,7 +459,7 @@ def validate_start_position(board):
 #          ROBOT MOVEMENT
 # ============================================
 
-async def move_to_position(position):
+def move_to_position(position):
 
     # convert position
     row = int(position[1])
@@ -505,42 +474,40 @@ async def move_to_position(position):
     y_distance = col * 20
 
     # move from default position
-    await default_position()
+    default_position()
 
     # move to target field
-    await X2_relative(18 + x_distance)
-    await Y2_relative(20 + y_distance)
+    X2_relative(18 + x_distance)
+    Y2_relative(20 + y_distance)
 
     # short pause before tap
-    await runloop.sleep_ms(500)
+    wait(500)
 
     # execute move on touchscreen
-    await Z2_tap()
+    Z2_tap()
 
     # short wait after tap
-    await runloop.sleep_ms(500)
+    wait(500)
 
     # move back to default position
-    await default_position()
-
+    default_position()
 
 
 # function to calibrate actors
-async def calibration():
+def calibration():
     print("Drücke linken Button zum Kalibrieren")
 
-    while not button.pressed(button.LEFT):
-        await runloop.sleep_ms(10)
+    while Button.LEFT not in hub.buttons.pressed():
+        wait(10)
 
-    await default_position()
+    default_position()
     print("Kalibriert")
-    print (motor.absolute_position(Motor_X2), motor.absolute_position(Motor_Y2), motor.absolute_position(Motor_Z2))
+    print(motor_X2.angle(), motor_Y2.angle(), motor_Z2.angle())
 
 
-#### main programm ####
+#### main program ####
 
-async def main():
-
+def main():
 
     # creates the playground
     board = ReversiBoard()
@@ -549,13 +516,13 @@ async def main():
     #                    Playground Scan                 #
     ######################################################
     # scans each field on the playground for black and white tokens
-    async def playground_scan():
+    def playground_scan():
 
-        await default_position()
-        await wait_for_left_button()
-        await X2_relative(18)
-        await Y2_relative(20)
-        await wait_for_left_button()
+        default_position()
+        wait_for_left_button()
+        X2_relative(18)
+        Y2_relative(20)
+        wait_for_left_button()
 
         going_down = True   # True = Zeile 8→1 (+X), False = Zeile 1→8 (-X)
 
@@ -564,29 +531,29 @@ async def main():
 
             if going_down:
                 for row in range(8, 0, -1):
-                    await field_scan(col_letter + str(row), board)
+                    field_scan(col_letter + str(row), board)
                     if row > 1:
-                        await X2_relative(18)
+                        X2_relative(18)
             else:
                 for row in range(1, 9):
-                    await field_scan(col_letter + str(row), board)
+                    field_scan(col_letter + str(row), board)
                     if row < 8:
-                        await X2_relative(-18)
+                        X2_relative(-18)
 
             if col_idx < 7:
-                await Y2_relative(20)
+                Y2_relative(20)
                 going_down = not going_down
-    
+
     ######################################################
     #                 REVERSI GAME LOOP                  #
     ######################################################
 
-    async def reversi_turn():
+    def reversi_turn():
 
         print("========== NEUER ZUG ==========")
         print("SCAN PLAYGROUND")
 
-        await playground_scan()
+        playground_scan()
 
         print("--- SPIELFELD NACH SCAN ---")
         print_board_debug(board)
@@ -596,10 +563,7 @@ async def main():
 
         # calculate best move
         print("BERECHNE BESTEN ZUG (Tiefe=" + str(MINIMAX_DEPTH) + ")...")
-        best_move = get_best_move(
-            board,
-            ROBOT_COLOR
-        )
+        best_move = get_best_move(board, ROBOT_COLOR)
 
         if best_move is None:
             print("KEIN GUELTIGER ZUG MOEGLICH - Zug wird uebersprungen")
@@ -609,14 +573,10 @@ async def main():
 
         # move robot
         print("BEWEGE ROBOTER ZU:", best_move)
-        await move_to_position(best_move)
+        move_to_position(best_move)
 
         # update board
-        apply_move(
-            board,
-            best_move,
-            ROBOT_COLOR
-        )
+        apply_move(board, best_move, ROBOT_COLOR)
 
         print("--- SPIELFELD NACH ROBOTERZUG ---")
         print_board_debug(board)
@@ -625,24 +585,22 @@ async def main():
         print("Weiss (W):", white, "  Schwarz (B):", black)
 
         # wait for enemy move
-        await wait_for_left_button(
-            "Gegner hat Zug ausgeführt"
-        )
+        wait_for_left_button("Gegner hat Zug ausgeführt")
 
-    await calibration()
-    await wait_for_left_button()
-    await wait_for_left_button()
+    calibration()
+    wait_for_left_button()
+    wait_for_left_button()
 
     # Pre-Game: Startposition einmalig scannen und prüfen
     print("PRE-GAME: SCAN STARTPOSITION")
-    await playground_scan()
+    playground_scan()
     print_board_debug(board)
     start_ok = validate_start_position(board)
     if not start_ok:
-        await wait_for_left_button("Startposition pruefen, dann fortfahren")
+        wait_for_left_button("Startposition pruefen, dann fortfahren")
 
     while True:
+        reversi_turn()
 
-        await reversi_turn()
 
-runloop.run(main())
+main()

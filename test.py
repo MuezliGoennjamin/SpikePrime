@@ -5,14 +5,14 @@
 # ============================================
 
 try:
-    import runloop                                    # type: ignore
-    import motor, color_sensor, color                 # type: ignore
-    from hub import port, button                      # type: ignore
+    from pybricks.hubs import PrimeHub                  # type: ignore
+    from pybricks.pupdevices import Motor, ColorSensor  # type: ignore
+    from pybricks.parameters import Port, Color, Button # type: ignore
+    from pybricks.tools import wait                     # type: ignore
     DEBUG_MODE = False
 
 except ImportError:
     DEBUG_MODE = True
-    import asyncio
     import random
 
     # Mock-Spielbrett für den Scan-Sensor
@@ -23,97 +23,117 @@ except ImportError:
     _mock_board[4][3] = 2   # D5 = Schwarz
     _mock_board[4][4] = 1   # E5 = Weiss
 
-    class _color:
+    class Color:
         GREEN = "GREEN"
         WHITE = "WHITE"
         BLACK = "BLACK"
 
-    class _port:
+    class Button:
+        LEFT = "LEFT"
+
+    class Port:
         A = B = C = D = E = F = None
 
-    class _button:
-        LEFT = None
+    class _MockButtons:
+        def pressed(self):
+            return set()
 
-    class _runloop:
-        async def sleep_ms(self, _):
+    class _MockHub:
+        def __init__(self):
+            self.buttons = _MockButtons()
+
+    class _MockMotor:
+        def __init__(self, *_):
             pass
-        def run(self, coro):
-            asyncio.run(coro)
+        def run_target(self, *_):
+            pass
+        def run_angle(self, *_):
+            pass
+        def angle(self):
+            return 0
 
-    color      = _color()
-    port       = _port()
-    button     = _button()
-    motor      = None
-    distance_sensor = None
-    color_sensor    = None
-    runloop    = _runloop()
+    class _MockColorSensor:
+        def __init__(self, *_):
+            pass
+        def color(self):
+            return None
+
+    def wait(*_):
+        pass
+
+    PrimeHub      = _MockHub
+    Motor         = _MockMotor
+    ColorSensor   = _MockColorSensor
 
 
-#global variables
+# global variables
 velocity_X1 = 150
 velocity_X2 = 90
 velocity_Y2 = 100
 velocity_Z2 = 50
-Motor_X1 = port.A
-Motor_X2 = port.C
-Motor_Y2 = port.F
-Motor_Z2 = port.B
+
+hub          = PrimeHub()
+motor_X1     = Motor(Port.A)
+motor_X2     = Motor(Port.C)
+motor_Y2     = Motor(Port.F)
+motor_Z2     = Motor(Port.B)
+color_sensor = ColorSensor(Port.D)
 
 
 ######################################################
 #                    Functions                       #
 ######################################################
 
-async def wait_for_left_button(step=""):
+def wait_for_left_button(step=""):
     print("--------------------------------")
     if step != "":
         print("WAIT:", step)
     else:
         print("WAIT FOR LEFT BUTTON")
     if not DEBUG_MODE:
-        while not button.pressed(button.LEFT):
-            await runloop.sleep_ms(100)
+        while Button.LEFT not in hub.buttons.pressed():
+            wait(100)
     print("AUTO: OK" if DEBUG_MODE else "BUTTON PRESSED")
     print("--------------------------------")
 
 
-async def default_position():
+def default_position():
     if not DEBUG_MODE:
-        await motor.run_to_absolute_position(Motor_X2, 0, velocity_X2)
-        await motor.run_to_absolute_position(Motor_Y2, 0, velocity_Y2)
-        await motor.run_to_absolute_position(Motor_Z2, 180, velocity_Z2)
+        motor_X2.run_target(velocity_X2, 0)
+        motor_Y2.run_target(velocity_Y2, 0)
+        motor_Z2.run_target(velocity_Z2, 180)
 
 
-async def X2_relative(distance):
+def X2_relative(distance):
     if not DEBUG_MODE:
-        await motor.run_for_degrees(Motor_X2, distance * 5, velocity_X2)
+        motor_X2.run_angle(velocity_X2, distance * 5)
 
 
-async def Y2_relative(distance):
+def Y2_relative(distance):
     if not DEBUG_MODE:
-        await motor.run_for_degrees(Motor_Y2, -distance * 5, velocity_Y2)
+        motor_Y2.run_angle(velocity_Y2, -distance * 5)
 
 
-async def Z2_tap():
+def Z2_tap():
     if not DEBUG_MODE:
-        await motor.run_to_absolute_position(Motor_Z2, 180, velocity_Z2)
-        await runloop.sleep_ms(300)
-        await motor.run_to_absolute_position(Motor_Z2, 140, velocity_Z2)
-        await runloop.sleep_ms(300)
+        motor_Z2.run_target(velocity_Z2, 180)
+        wait(300)
+        motor_Z2.run_target(velocity_Z2, 140)
+        wait(300)
 
 
-async def field_scan(position, board):
+def field_scan(position, board):
     if DEBUG_MODE:
         r, c = board._parse_position(position)
         board.board[r][c] = _mock_board[r][c]
         return
-    await runloop.sleep_ms(500)
-    detected_color = color_sensor.color(port.D)
-    if detected_color is color.GREEN:
+    wait(500)
+    detected_color = color_sensor.color()
+    if detected_color == Color.GREEN:
         board.set(position, 0)
-    elif detected_color is color.WHITE:
+    elif detected_color == Color.WHITE:
         board.set(position, 1)
-    elif detected_color is color.BLACK:
+    elif detected_color == Color.BLACK:
         board.set(position, 2)
 
 
@@ -356,7 +376,7 @@ def validate_start_position(board):
 #          ROBOT MOVEMENT
 # ============================================
 
-async def move_to_position(position):
+def move_to_position(position):
     row = int(position[1])
     col = ord(position[0]) - ord('A')
     x_distance = (8 - row) * 18
@@ -367,32 +387,30 @@ async def move_to_position(position):
               "  X=" + str(18 + x_distance) + "mm  Y=" + str(20 + y_distance) + "mm")
         return
 
-    await default_position()
-    await X2_relative(18 + x_distance)
-    await Y2_relative(20 + y_distance)
-    await runloop.sleep_ms(500)
-    await Z2_tap()
-    await runloop.sleep_ms(500)
-    await default_position()
+    default_position()
+    X2_relative(18 + x_distance)
+    Y2_relative(20 + y_distance)
+    wait(500)
+    Z2_tap()
+    wait(500)
+    default_position()
 
 
-async def calibration():
+def calibration():
     if DEBUG_MODE:
         print("[DEBUG] Kalibrierung übersprungen")
         return
     print("Drücke linken Button zum Kalibrieren")
-    while not button.pressed(button.LEFT):
-        await runloop.sleep_ms(10)
-    await default_position()
+    while Button.LEFT not in hub.buttons.pressed():
+        wait(10)
+    default_position()
     print("Kalibriert")
-    print(motor.absolute_position(Motor_X2),
-          motor.absolute_position(Motor_Y2),
-          motor.absolute_position(Motor_Z2))
+    print(motor_X2.angle(), motor_Y2.angle(), motor_Z2.angle())
 
 
-#### main programm ####
+#### main program ####
 
-async def main():
+def main():
 
     board = ReversiBoard()
 
@@ -400,12 +418,12 @@ async def main():
     #                    Playground Scan                 #
     ######################################################
 
-    async def playground_scan():
-        await default_position()
-        await wait_for_left_button()
-        await X2_relative(18)
-        await Y2_relative(20)
-        await wait_for_left_button()
+    def playground_scan():
+        default_position()
+        wait_for_left_button()
+        X2_relative(18)
+        Y2_relative(20)
+        wait_for_left_button()
 
         going_down = True
 
@@ -414,28 +432,28 @@ async def main():
 
             if going_down:
                 for row in range(8, 0, -1):
-                    await field_scan(col_letter + str(row), board)
+                    field_scan(col_letter + str(row), board)
                     if row > 1:
-                        await X2_relative(18)
+                        X2_relative(18)
             else:
                 for row in range(1, 9):
-                    await field_scan(col_letter + str(row), board)
+                    field_scan(col_letter + str(row), board)
                     if row < 8:
-                        await X2_relative(-18)
+                        X2_relative(-18)
 
             if col_idx < 7:
-                await Y2_relative(20)
+                Y2_relative(20)
                 going_down = not going_down
 
     ######################################################
     #                 REVERSI GAME LOOP                  #
     ######################################################
 
-    async def reversi_turn(turn):
+    def reversi_turn(turn):
 
         print("========== ZUG " + str(turn) + " ==========")
         print("SCAN PLAYGROUND")
-        await playground_scan()
+        playground_scan()
 
         print("--- SPIELFELD NACH SCAN ---")
         print_board_debug(board)
@@ -451,7 +469,7 @@ async def main():
             print("ROBOTER: Kein gueltiger Zug - Runde uebersprungen")
         else:
             print("BESTER ZUG:", best_move)
-            await move_to_position(best_move)
+            move_to_position(best_move)
             apply_move(board, best_move, ROBOT_COLOR)
             print("--- SPIELFELD NACH ROBOTERZUG ---")
             print_board_debug(board)
@@ -478,20 +496,20 @@ async def main():
             else:
                 print("GEGNER: Kein gueltiger Zug - Runde uebersprungen")
         else:
-            await wait_for_left_button("Gegner hat Zug ausgeführt")
+            wait_for_left_button("Gegner hat Zug ausgeführt")
 
     # ---- Startup ----
 
-    await calibration()
-    await wait_for_left_button()
-    await wait_for_left_button()
+    calibration()
+    wait_for_left_button()
+    wait_for_left_button()
 
     print("PRE-GAME: SCAN STARTPOSITION")
-    await playground_scan()
+    playground_scan()
     print_board_debug(board)
     start_ok = validate_start_position(board)
     if not start_ok:
-        await wait_for_left_button("Startposition pruefen, dann fortfahren")
+        wait_for_left_button("Startposition pruefen, dann fortfahren")
 
     # ---- Spielschleife ----
 
@@ -515,6 +533,7 @@ async def main():
                 break
 
         turn += 1
-        await reversi_turn(turn)
+        reversi_turn(turn)
 
-runloop.run(main())
+
+main()
