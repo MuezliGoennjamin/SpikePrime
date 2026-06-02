@@ -4,7 +4,7 @@ from pybricks.parameters import Port, Button
 from pybricks.tools import wait
 
 hub = PrimeHub()
-sensor = ColorSensor(Port.F)
+sensor = ColorSensor(Port.D)
 
 # Helligkeitsstufen in Prozent
 brightness_levels = [0, 25, 50, 75, 100]

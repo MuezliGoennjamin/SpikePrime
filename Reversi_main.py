@@ -1,6 +1,6 @@
 from pybricks.hubs import PrimeHub
 from pybricks.pupdevices import Motor, ColorSensor
-from pybricks.parameters import Port, Color, Button
+from pybricks.parameters import Port, Button
 from pybricks.tools import wait
 
 # Programm auf kleines Feld abgestimmt
@@ -20,6 +20,10 @@ motor_X2 = Motor(Port.C)
 motor_Y2 = Motor(Port.F)
 motor_Z2 = Motor(Port.B)
 color_sensor = ColorSensor(Port.D)
+color_sensor.lights.on(0)
+
+move_distance_x = 17    # [mm] Abstand von Zeile zu Zeile
+move_distance_y = 17    # [mm] Abstand von Spalte zu Spalte
 
 
 ######################################################
@@ -74,22 +78,32 @@ def Z2_tap():
     wait(300)
 
 
+# HSV ranges: (h_lo, h_hi, s_lo, s_hi, v_lo, v_hi)
+# 0 = green (empty), 1 = white, 2 = black
+_HSV_RANGES = {
+    0: (135, 136, 61, 62,  26,  27),
+    1: (194, 208, 21, 35,  71, 100),
+    2: (153, 193, 39, 49,   8,  15),
+}
+_TOLERANCE = 0.05
+
+
+def _in_range(value, low, high):
+    return low * (1 - _TOLERANCE) <= value <= high * (1 + _TOLERANCE)
+
+
 # scan field for white or black token and save the data of the field
 def field_scan(position, board):
 
-    # wait a certain time to detect the color
     wait(500)
 
-    detected_color = color_sensor.color()
+    hsv = color_sensor.hsv(surface=False)
+    h, s, v = hsv.h, hsv.s, hsv.v
 
-    if detected_color == Color.GREEN:
-        board.set(position, 0)
-
-    elif detected_color == Color.WHITE:
-        board.set(position, 1)
-
-    elif detected_color == Color.BLACK:
-        board.set(position, 2)
+    for color_value, (h_lo, h_hi, s_lo, s_hi, v_lo, v_hi) in _HSV_RANGES.items():
+        if _in_range(h, h_lo, h_hi) and _in_range(s, s_lo, s_hi) and _in_range(v, v_lo, v_hi):
+            board.set(position, color_value)
+            return
 
 
 # ============================================
@@ -467,18 +481,18 @@ def move_to_position(position):
 
     # movement values
     # A8 corresponds to:
-    # X = 18 mm
-    # Y = 20 mm
+    # X = 17 mm
+    # Y = 18 mm
 
-    x_distance = (8 - row) * 18
-    y_distance = col * 20
+    x_distance = (8 - row) * move_distance_x
+    y_distance = col * move_distance_y
 
     # move from default position
     default_position()
 
     # move to target field
-    X2_relative(18 + x_distance)
-    Y2_relative(20 + y_distance)
+    X2_relative(move_distance_x + x_distance)
+    Y2_relative(move_distance_y + y_distance)
 
     # short pause before tap
     wait(500)
@@ -520,9 +534,6 @@ def main():
 
         default_position()
         wait_for_left_button()
-        X2_relative(18)
-        Y2_relative(20)
-        wait_for_left_button()
 
         going_down = True   # True = Zeile 8→1 (+X), False = Zeile 1→8 (-X)
 
@@ -533,15 +544,15 @@ def main():
                 for row in range(8, 0, -1):
                     field_scan(col_letter + str(row), board)
                     if row > 1:
-                        X2_relative(18)
+                        X2_relative(move_distance_x)
             else:
                 for row in range(1, 9):
                     field_scan(col_letter + str(row), board)
                     if row < 8:
-                        X2_relative(-18)
+                        X2_relative(-move_distance_x)
 
             if col_idx < 7:
-                Y2_relative(20)
+                Y2_relative(move_distance_y)
                 going_down = not going_down
 
     ######################################################
