@@ -25,6 +25,10 @@ color_sensor.lights.on(0)
 move_distance_x = 85   # [Grad] Abstand von Zeile zu Zeile
 move_distance_y = 85   # [Grad] Abstand von Spalte zu Spalte
 
+# Anzeige-Position (Motorwinkel zur Uhr-Anzeige) – TODO: kalibrieren
+INDICATOR_X2 = 0
+INDICATOR_Y2 = 0
+
 
 ######################################################
 #                    Functions                       #
@@ -470,6 +474,38 @@ def validate_start_position(board):
 
 
 # ============================================
+#         TURN INDICATOR (Chess Clock)
+# ============================================
+
+def goto_turn_indicator():
+    motor_X2.run_target(velocity_X2, INDICATOR_X2)
+    motor_Y2.run_target(velocity_Y2, INDICATOR_Y2)
+    wait(300)
+
+
+def is_indicator_red():
+    wait(200)
+    hsv = color_sensor.hsv(surface=False)
+    h, s, v = hsv.h, hsv.s, hsv.v
+    return (h <= 20 or h >= 340) and s >= 40 and v >= 20
+
+
+def wait_for_robot_turn():
+    goto_turn_indicator()
+
+    print("WARTE: Gegner uebernimmt (rot -> schwarz)...")
+    while is_indicator_red():
+        wait(200)
+
+    print("WARTE: Roboter ist wieder am Zug (schwarz -> rot)...")
+    while not is_indicator_red():
+        wait(200)
+
+    print("ROBOTER IST AM ZUG")
+    default_position()
+
+
+# ============================================
 #          ROBOT MOVEMENT
 # ============================================
 
@@ -533,7 +569,6 @@ def main():
     def playground_scan():
 
         default_position()
-        wait_for_left_button()
 
         going_down = True   # True = Zeile 8→1 (+X), False = Zeile 1→8 (-X)
 
@@ -595,8 +630,8 @@ def main():
         black = sum(1 for _, v in board.get_all_positions() if v == ROBOT_COLOR)
         print("Weiss (W):", white, "  Schwarz (B):", black)
 
-        # wait for enemy move
-        wait_for_left_button("Gegner hat Zug ausgeführt")
+        # warte bis Gegner Zug beendet hat (Uhr: rot -> schwarz -> rot)
+        wait_for_robot_turn()
 
     calibration()
     wait_for_left_button()
@@ -604,6 +639,7 @@ def main():
 
     # Pre-Game: Startposition einmalig scannen und prüfen
     print("PRE-GAME: SCAN STARTPOSITION")
+    wait_for_left_button("Bereit fuer Pre-Game Scan")
     playground_scan()
     print_board_debug(board)
     start_ok = validate_start_position(board)
