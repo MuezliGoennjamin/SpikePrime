@@ -22,8 +22,8 @@ motor_Z2 = Motor(Port.B)
 color_sensor = ColorSensor(Port.D)
 color_sensor.lights.on(0)
 
-move_distance_x = 17    # [mm] Abstand von Zeile zu Zeile
-move_distance_y = 17    # [mm] Abstand von Spalte zu Spalte
+move_distance_x = 85   # [Grad] Abstand von Zeile zu Zeile
+move_distance_y = 85   # [Grad] Abstand von Spalte zu Spalte
 
 
 ######################################################
@@ -54,12 +54,12 @@ def default_position():
 
 
 # defines the moving distance of the Motors
-def X2_relative(distance):    # [mm]
-    motor_X2.run_angle(velocity_X2, distance * 5)
+def X2_relative(distance):    # [degrees]
+    motor_X2.run_angle(velocity_X2, distance)
 
 
-def Y2_relative(distance):    # [mm]
-    motor_Y2.run_angle(velocity_Y2, -distance * 5)
+def Y2_relative(distance):    # [degrees]
+    motor_Y2.run_angle(velocity_Y2, -distance)
 
 
 # tap on the touchscreen to place the token
