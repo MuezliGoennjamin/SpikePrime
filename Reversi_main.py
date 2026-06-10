@@ -36,18 +36,13 @@ INDICATOR_Y2 = 0
 
 def wait_for_left_button(step=""):
 
-    print("--------------------------------")
-
     if step != "":
-        print("WAIT:", step)
+        print("Warte: " + step)
     else:
-        print("WAIT FOR LEFT BUTTON")
+        print("Warte auf linken Button...")
 
     while Button.LEFT not in hub.buttons.pressed():
         wait(100)
-
-    print("BUTTON PRESSED")
-    print("--------------------------------")
 
 
 # sets the default position of the Coordinate System
@@ -448,28 +443,21 @@ def validate_start_position(board):
     empty = sum(1 for p in start_fields if board.get(p) == 0)
     total = sum(1 for _, v in board.get_all_positions() if v != 0)
 
-    print("STARTCHECK: W=" + str(white) + " S=" + str(black) + " LEER=" + str(empty))
-    print("STEINE GESAMT: " + str(total))
+    print("Startcheck: Weiss=" + str(white) + " Schwarz=" + str(black) + " Leer=" + str(empty) + " Gesamt=" + str(total))
 
     if total == 0:
-        print("!!! FEHLER: Keine Steine erkannt!")
-        print("!!! Roboter ist moeglicherweise nicht ueber dem Spielfeld")
-        print("!!! oder Farbsensor ist falsch kalibriert (Port pruefen)")
+        print("FEHLER: Keine Steine erkannt. Sensorposition und Kalibrierung pruefen.")
         return False
 
     if empty > 0:
-        print("!!! WARNUNG: " + str(empty) + " Anfangssteine in D4/E4/D5/E5 nicht erkannt!")
-        print("!!! Prüfe: Liegt der Sensor korrekt ueber den Mittelfeldern?")
-        print("!!! Prüfe: Stimmen die X/Y-Abstände (18mm / 20mm) fuer dein Feld?")
+        print("WARNUNG: " + str(empty) + " Startfeld(er) in D4/E4/D5/E5 nicht erkannt. Sensorposition pruefen.")
         return False
 
     if white != 2 or black != 2:
-        print("!!! WARNUNG: Unerwartete Startaufstellung erkannt!")
-        print("!!! Erwartet: 2 Weiss + 2 Schwarz in D4/E4/D5/E5")
-        print("!!! Erkannt:  W=" + str(white) + " S=" + str(black))
+        print("WARNUNG: Unerwartete Startaufstellung (erwartet W=2 S=2, erkannt W=" + str(white) + " S=" + str(black) + ")")
         return False
 
-    print("STARTPOSITION OK")
+    print("Startposition korrekt.")
     return True
 
 
@@ -493,15 +481,15 @@ def is_indicator_red():
 def wait_for_robot_turn():
     goto_turn_indicator()
 
-    print("WARTE: Gegner uebernimmt (rot -> schwarz)...")
+    print("Warte: Gegner ist am Zug...")
     while is_indicator_red():
         wait(200)
 
-    print("WARTE: Roboter ist wieder am Zug (schwarz -> rot)...")
+    print("Warte: Gegner beendet Zug...")
     while not is_indicator_red():
         wait(200)
 
-    print("ROBOTER IST AM ZUG")
+    print("Roboter ist am Zug.")
     default_position()
 
 
@@ -545,14 +533,13 @@ def move_to_position(position):
 
 # function to calibrate actors
 def calibration():
-    print("Drücke linken Button zum Kalibrieren")
+    print("Kalibrierung: Linken Button druecken")
 
     while Button.LEFT not in hub.buttons.pressed():
         wait(10)
 
     default_position()
-    print("Kalibriert")
-    print(motor_X2.angle(), motor_Y2.angle(), motor_Z2.angle())
+    print("Kalibriert. Motorwinkel - X2:", motor_X2.angle(), "Y2:", motor_Y2.angle(), "Z2:", motor_Z2.angle())
 
 
 #### main program ####
@@ -596,39 +583,33 @@ def main():
 
     def reversi_turn():
 
-        print("========== NEUER ZUG ==========")
-        print("SCAN PLAYGROUND")
+        print("===== NEUER ZUG =====")
 
         playground_scan()
 
-        print("--- SPIELFELD NACH SCAN ---")
+        print("Spielfeld nach Scan:")
         print_board_debug(board)
         white = sum(1 for _, v in board.get_all_positions() if v == ENEMY_COLOR)
         black = sum(1 for _, v in board.get_all_positions() if v == ROBOT_COLOR)
-        print("Weiss (W):", white, "  Schwarz (B):", black)
+        print("Weiss:", white, " Schwarz:", black)
 
-        # calculate best move
-        print("BERECHNE BESTEN ZUG (Tiefe=" + str(MINIMAX_DEPTH) + ")...")
+        print("Berechne besten Zug (Tiefe=" + str(MINIMAX_DEPTH) + ")...")
         best_move = get_best_move(board, ROBOT_COLOR)
 
         if best_move is None:
-            print("KEIN GUELTIGER ZUG MOEGLICH - Zug wird uebersprungen")
+            print("Kein gueltiger Zug moeglich - Zug wird uebersprungen.")
             return
 
-        print("BESTER ZUG:", best_move)
-
-        # move robot
-        print("BEWEGE ROBOTER ZU:", best_move)
+        print("Bester Zug:", best_move)
         move_to_position(best_move)
 
-        # update board
         apply_move(board, best_move, ROBOT_COLOR)
 
-        print("--- SPIELFELD NACH ROBOTERZUG ---")
+        print("Spielfeld nach Roboterzug (erwartet):")
         print_board_debug(board)
         white = sum(1 for _, v in board.get_all_positions() if v == ENEMY_COLOR)
         black = sum(1 for _, v in board.get_all_positions() if v == ROBOT_COLOR)
-        print("Weiss (W):", white, "  Schwarz (B):", black)
+        print("Weiss:", white, " Schwarz:", black)
 
         # warte bis Gegner Zug beendet hat (Uhr: rot -> schwarz -> rot)
         wait_for_robot_turn()
@@ -638,7 +619,6 @@ def main():
     wait_for_left_button()
 
     # Pre-Game: Startposition einmalig scannen und prüfen
-    print("PRE-GAME: SCAN STARTPOSITION")
     wait_for_left_button("Bereit fuer Pre-Game Scan")
     playground_scan()
     print_board_debug(board)
