@@ -23,11 +23,11 @@ color_sensor = ColorSensor(Port.D)
 color_sensor.lights.on(0)
 
 move_distance_x = 85   # [Grad] Abstand von Zeile zu Zeile
-move_distance_y = 85   # [Grad] Abstand von Spalte zu Spalte
+move_distance_y = 88   # [Grad] Abstand von Spalte zu Spalte
 
 # Anzeige-Position (Motorwinkel zur Uhr-Anzeige) – TODO: kalibrieren
-INDICATOR_X2 = 0
-INDICATOR_Y2 = 0
+INDICATOR_X2 = 300
+INDICATOR_Y2 = 300
 
 
 ######################################################
@@ -475,7 +475,7 @@ def is_indicator_red():
     wait(200)
     hsv = color_sensor.hsv(surface=False)
     h, s, v = hsv.h, hsv.s, hsv.v
-    return (h <= 20 or h >= 340) and s >= 40 and v >= 20
+    return 346 <= h <= 349 and 58 <= s <= 74 and 49 <= v <= 100
 
 
 def wait_for_robot_turn():
