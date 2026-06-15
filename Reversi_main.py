@@ -245,8 +245,8 @@ DIRECTIONS = [
     ( 1,  1)
 ]
 
-ROBOT_COLOR = 2      # black
-ENEMY_COLOR = 1      # white
+ROBOT_COLOR = 2      # default: schwarz (wird in main() per Hub-Auswahl gesetzt)
+ENEMY_COLOR = 1      # default: weiss   (wird in main() per Hub-Auswahl gesetzt)
 
 
 def is_on_board(row, col):
@@ -415,6 +415,80 @@ def apply_move(board, position, player):
 
 
 # ============================================
+#         FARB-AUSWAHL (Hub-Buttons)
+# ============================================
+
+def show_color_on_display(color):
+    """Zeigt die Roboterfarbe auf der 5x5 LED-Matrix.
+    Schwarz (2) = gefuellter Kreis, Weiss (1) = hohler Kreis.
+    """
+    hub.display.off()
+    if color == 2:  # Schwarz = gefuellter Kreis (=schwarzer Reversi-Stein)
+        pixels = [
+            (0, 1), (0, 2), (0, 3),
+            (1, 0), (1, 1), (1, 2), (1, 3), (1, 4),
+            (2, 0), (2, 1), (2, 2), (2, 3), (2, 4),
+            (3, 0), (3, 1), (3, 2), (3, 3), (3, 4),
+            (4, 1), (4, 2), (4, 3)
+        ]
+    else:           # Weiss = hohler Kreis (=weisser Reversi-Stein)
+        pixels = [
+            (0, 1), (0, 2), (0, 3),
+            (1, 0),                  (1, 4),
+            (2, 0),                  (2, 4),
+            (3, 0),                  (3, 4),
+            (4, 1), (4, 2), (4, 3)
+        ]
+    for row, col in pixels:
+        hub.display.pixel(row, col, 100)
+
+
+def select_robot_color():
+    """Farbe des Roboters per Hub-Buttons waehlen.
+    Blinkendes Display = Auswahl laeuft.
+    Rechter Button = Farbe wechseln.
+    Linker Button  = Bestaetigen (Display bleibt dann dauerhaft an).
+    """
+    color = 2       # Standardfarbe: Schwarz
+    blink_count = 0
+    display_on = False
+
+    while True:
+        # Blinkmuster: 4 Zyklen an (400 ms), 2 Zyklen aus (200 ms)
+        new_display_on = (blink_count % 6) < 4
+        if new_display_on != display_on:
+            if new_display_on:
+                show_color_on_display(color)
+            else:
+                hub.display.off()
+            display_on = new_display_on
+        blink_count += 1
+
+        pressed = hub.buttons.pressed()
+
+        if Button.RIGHT in pressed:
+            color = 1 if color == 2 else 2
+            show_color_on_display(color)
+            display_on = True
+            blink_count = 0
+            while Button.RIGHT in hub.buttons.pressed():
+                wait(50)
+            wait(200)
+
+        elif Button.LEFT in pressed:
+            # Bestaetigung: Display steady (kein Blinken mehr)
+            show_color_on_display(color)
+            while Button.LEFT in hub.buttons.pressed():
+                wait(50)
+            wait(200)
+            break
+
+        wait(100)
+
+    return color
+
+
+# ============================================
 #              DEBUG HELPERS
 # ============================================
 
@@ -426,10 +500,10 @@ def print_board_debug(board):
             val = board.board[row - 1][col]
             if val == 0:
                 line += ". "
-            elif val == ENEMY_COLOR:
+            elif val == 1:
                 line += "W "
-            elif val == ROBOT_COLOR:
-                line += "B "
+            elif val == 2:
+                line += "S "
             else:
                 line += "? "
         print(line)
@@ -438,8 +512,8 @@ def print_board_debug(board):
 def validate_start_position(board):
     """Prüft ob die 4 Anfangssteine korrekt erkannt wurden (D4/E4/D5/E5)."""
     start_fields = ["D4", "E4", "D5", "E5"]
-    white = sum(1 for p in start_fields if board.get(p) == ENEMY_COLOR)
-    black = sum(1 for p in start_fields if board.get(p) == ROBOT_COLOR)
+    white = sum(1 for p in start_fields if board.get(p) == 1)
+    black = sum(1 for p in start_fields if board.get(p) == 2)
     empty = sum(1 for p in start_fields if board.get(p) == 0)
     total = sum(1 for _, v in board.get_all_positions() if v != 0)
 
@@ -545,6 +619,13 @@ def calibration():
 #### main program ####
 
 def main():
+    global ROBOT_COLOR, ENEMY_COLOR
+
+    # Farbe des Roboters per Hub-Buttons auswaehlen (blinkendes Display)
+    ROBOT_COLOR = select_robot_color()
+    ENEMY_COLOR = 1 if ROBOT_COLOR == 2 else 2
+    # Display zeigt die gewaehlte Farbe dauerhaft waehrend des Spiels
+    show_color_on_display(ROBOT_COLOR)
 
     # creates the playground
     board = ReversiBoard()
@@ -590,8 +671,8 @@ def main():
 
         print("Spielfeld nach Scan:")
         print_board_debug(board)
-        white = sum(1 for _, v in board.get_all_positions() if v == ENEMY_COLOR)
-        black = sum(1 for _, v in board.get_all_positions() if v == ROBOT_COLOR)
+        white = sum(1 for _, v in board.get_all_positions() if v == 1)
+        black = sum(1 for _, v in board.get_all_positions() if v == 2)
         print("Weiss:", white, " Schwarz:", black)
 
         print("Berechne besten Zug (Tiefe=" + str(MINIMAX_DEPTH) + ")...")
@@ -608,8 +689,8 @@ def main():
 
         print("Spielfeld nach Roboterzug (erwartet):")
         print_board_debug(board)
-        white = sum(1 for _, v in board.get_all_positions() if v == ENEMY_COLOR)
-        black = sum(1 for _, v in board.get_all_positions() if v == ROBOT_COLOR)
+        white = sum(1 for _, v in board.get_all_positions() if v == 1)
+        black = sum(1 for _, v in board.get_all_positions() if v == 2)
         print("Weiss:", white, " Schwarz:", black)
 
         # warte bis Gegner Zug beendet hat (Uhr: rot -> schwarz -> rot)
