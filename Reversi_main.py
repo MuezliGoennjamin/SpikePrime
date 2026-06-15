@@ -22,12 +22,12 @@ motor_Z2 = Motor(Port.B)
 color_sensor = ColorSensor(Port.D)
 color_sensor.lights.on(0)
 
-move_distance_x = 85   # [Grad] Abstand von Zeile zu Zeile
+move_distance_x = 86   # [Grad] Abstand von Zeile zu Zeile
 move_distance_y = 88   # [Grad] Abstand von Spalte zu Spalte
 
 # Anzeige-Position (Motorwinkel zur Uhr-Anzeige) – TODO: kalibrieren
 INDICATOR_X2 = 300
-INDICATOR_Y2 = 300
+INDICATOR_Y2 = 10
 
 
 ######################################################
@@ -82,7 +82,7 @@ def Z2_tap():
 _HSV_RANGES = {
     0: (135, 136, 61, 62,  26,  27),
     1: (194, 208, 21, 35,  71, 100),
-    2: (153, 193, 39, 49,   8,  15),
+    2: (145, 203, 35, 55,   0,  25),
 }
 _TOLERANCE = 0.05
 
@@ -581,11 +581,12 @@ def main():
     #                 REVERSI GAME LOOP                  #
     ######################################################
 
-    def reversi_turn():
+    def reversi_turn(skip_scan=False):
 
         print("===== NEUER ZUG =====")
 
-        playground_scan()
+        if not skip_scan:
+            playground_scan()
 
         print("Spielfeld nach Scan:")
         print_board_debug(board)
@@ -626,8 +627,10 @@ def main():
     if not start_ok:
         wait_for_left_button("Startposition pruefen, dann fortfahren")
 
+    first_turn = True
     while True:
-        reversi_turn()
+        reversi_turn(skip_scan=first_turn)
+        first_turn = False
 
 
 main()
