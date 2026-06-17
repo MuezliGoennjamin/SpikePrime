@@ -62,6 +62,60 @@ def Y2_relative(distance):    # [degrees]
     motor_Y2.run_angle(velocity_Y2, -distance)
 
 
+def center_on_field():
+    """Feinkorrektur nach Absolutpositionierung per run_target.
+    Prueft ob der Sensor einen gueltigen Farbwert liest (gruen/weiss/schwarz).
+    Falls nicht (Sensor auf einer Feldlinie), werden kleine Schritte in X
+    und dann Y versucht bis ein gueltiger Wert gefunden wird.
+    Die Korrektur gilt nur fuer die aktuelle Messung – die naechste
+    run_target-Bewegung kehrt ohnehin zum absoluten Zielwinkel zurueck.
+    """
+    STEP  = 5    # [Grad] ~1.4 mm pro Korrekturschritt
+    MAX_N = 3    # Suchweite: bis zu ±3 Schritte = ±4.3 mm
+
+    def on_field():
+        wait(100)
+        hsv = color_sensor.hsv(surface=False)
+        h, s, v = hsv.h, hsv.s, hsv.v
+        for key in _HSV_RANGES:
+            h_lo, h_hi, s_lo, s_hi, v_lo, v_hi = _HSV_RANGES[key]
+            if (_in_range(h, h_lo, h_hi) and
+                    _in_range(s, s_lo, s_hi) and
+                    _in_range(v, v_lo, v_hi)):
+                return True
+        return False
+
+    if on_field():
+        return True
+
+    # Kreuzsuche: zuerst X, dann Y – bei Erfolg Motor an korrigierter Position lassen
+    for motor, vel in [(motor_X2, velocity_X2), (motor_Y2, velocity_Y2)]:
+        offset = 0
+        for n in range(1, MAX_N + 1):
+            for sign in [1, -1]:
+                target = STEP * n * sign
+                motor.run_angle(vel, target - offset)
+                offset = target
+                if on_field():
+                    return True
+        motor.run_angle(vel, -offset)  # Achse zurueck zur Ausgangsposition
+
+    return False
+
+
+def move_sensor_to(row, col):
+    """Positioniert den Farbsensor absolut ueber Feld (row=1-8, col=0-7).
+    Nutzt run_target statt run_angle: der Motor faehrt immer zu einem
+    festen Winkel relativ zur Nullposition – Haker in der Mechanik werden
+    bei der naechsten Bewegung automatisch kompensiert.
+    Anschliessend prueft center_on_field() ob der Sensor auf einem
+    gueltigen Feld steht, und korrigiert falls er auf einer Feldlinie liegt.
+    """
+    motor_X2.run_target(velocity_X2,  move_distance_x * (9 - row))
+    motor_Y2.run_target(velocity_Y2, -(move_distance_y * (col + 1)))
+    center_on_field()
+
+
 # tap on the touchscreen to place the token
 def Z2_tap():
 
@@ -574,38 +628,20 @@ def wait_for_robot_turn():
 
 def move_to_position(position):
 
-    # convert position
     row = int(position[1])
     col = ord(position[0]) - ord('A')
 
-    # movement values
-    # A8 corresponds to:
-    # X = 17 mm
-    # Y = 18 mm
-
-    x_distance = (8 - row) * move_distance_x
-    y_distance = col * move_distance_y
-
-    # move from default position
     default_position()
 
-    # move color sensor to target field
-    X2_relative(move_distance_x + x_distance)
-    Y2_relative(move_distance_y + y_distance)
+    # X: absolut zum Zielfeld
+    motor_X2.run_target(velocity_X2, move_distance_x * (9 - row))
+    # Y: absolut zum Zielfeld + Stift-Versatz (Stift sitzt hinter dem Sensor)
+    motor_Y2.run_target(velocity_Y2, -(move_distance_y * (col + 1)) - pen_offset_y)
 
-    # move pen (behind sensor) to target field by applying Y offset
-    Y2_relative(pen_offset_y)
-
-    # short pause before tap
     wait(500)
-
-    # execute move on touchscreen
     Z2_tap()
-
-    # short wait after tap
     wait(500)
 
-    # move back to default position
     default_position()
 
 
@@ -637,9 +673,7 @@ def calibrate_colors():
     def scan_field(position):
         row = int(position[1])
         col = ord(position[0]) - ord('A')
-        default_position()
-        X2_relative(move_distance_x + (8 - row) * move_distance_x)
-        Y2_relative(move_distance_y + col * move_distance_y)
+        move_sensor_to(row, col)
         wait(600)
         hsv = color_sensor.hsv(surface=False)
         return hsv.h, hsv.s, hsv.v
@@ -731,25 +765,17 @@ def main():
 
         default_position()
 
-        going_down = True   # True = Zeile 8→1 (+X), False = Zeile 1→8 (-X)
+        going_down = True   # True = Zeile 8→1, False = Zeile 1→8
 
         for col_idx in range(8):
             col_letter = chr(ord('A') + col_idx)
+            row_range = range(8, 0, -1) if going_down else range(1, 9)
 
-            if going_down:
-                for row in range(8, 0, -1):
-                    field_scan(col_letter + str(row), board)
-                    if row > 1:
-                        X2_relative(move_distance_x)
-            else:
-                for row in range(1, 9):
-                    field_scan(col_letter + str(row), board)
-                    if row < 8:
-                        X2_relative(-move_distance_x)
+            for row in row_range:
+                move_sensor_to(row, col_idx)   # absolut – selbstkorrigierend
+                field_scan(col_letter + str(row), board)
 
-            if col_idx < 7:
-                Y2_relative(move_distance_y)
-                going_down = not going_down
+            going_down = not going_down
 
     ######################################################
     #                 REVERSI GAME LOOP                  #
