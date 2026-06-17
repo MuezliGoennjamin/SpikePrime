@@ -24,6 +24,7 @@ color_sensor.lights.on(0)
 
 move_distance_x = 86   # [Grad] Abstand von Zeile zu Zeile
 move_distance_y = 88   # [Grad] Abstand von Spalte zu Spalte
+pen_offset_y    =  0   # [Grad] Y-Versatz des Stifts hinter dem Farbsensor (TODO: kalibrieren)
 
 # Anzeige-Position (Motorwinkel zur Uhr-Anzeige) – TODO: kalibrieren
 INDICATOR_X2 = 300
@@ -588,9 +589,12 @@ def move_to_position(position):
     # move from default position
     default_position()
 
-    # move to target field
+    # move color sensor to target field
     X2_relative(move_distance_x + x_distance)
     Y2_relative(move_distance_y + y_distance)
+
+    # move pen (behind sensor) to target field by applying Y offset
+    Y2_relative(pen_offset_y)
 
     # short pause before tap
     wait(500)
