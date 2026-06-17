@@ -616,6 +616,95 @@ def calibration():
     print("Kalibriert. Motorwinkel - X2:", motor_X2.angle(), "Y2:", motor_Y2.angle(), "Z2:", motor_Z2.angle())
 
 
+# ============================================
+#         FARBKALIBRIERUNG
+# ============================================
+
+def calibrate_colors():
+    """Kalibriert HSV-Farbbereiche automatisch anhand bekannter Startpositionen.
+    Ecken (A1/A8/H1/H8) sind beim Start garantiert leer -> Gruen-Referenz.
+    Felder D4/E4/D5/E5 enthalten immer 2 weisse und 2 schwarze Steine.
+    Erzeugt grosszuegige Bereiche, tolerant gegen Sensorpositionsschwankungen.
+    """
+    MARGIN_H = 25
+    MARGIN_S = 20
+    MARGIN_V = 20
+
+    def scan_field(position):
+        row = int(position[1])
+        col = ord(position[0]) - ord('A')
+        default_position()
+        X2_relative(move_distance_x + (8 - row) * move_distance_x)
+        Y2_relative(move_distance_y + col * move_distance_y)
+        wait(600)
+        hsv = color_sensor.hsv(surface=False)
+        return hsv.h, hsv.s, hsv.v
+
+    def make_range(samples):
+        h_min, h_max = 360, 0
+        s_min, s_max = 100, 0
+        v_min, v_max = 100, 0
+        for h, s, v in samples:
+            if h < h_min: h_min = h
+            if h > h_max: h_max = h
+            if s < s_min: s_min = s
+            if s > s_max: s_max = s
+            if v < v_min: v_min = v
+            if v > v_max: v_max = v
+        return (
+            max(0,   h_min - MARGIN_H), min(360, h_max + MARGIN_H),
+            max(0,   s_min - MARGIN_S), min(100, s_max + MARGIN_S),
+            max(0,   v_min - MARGIN_V), min(100, v_max + MARGIN_V)
+        )
+
+    # Alle 4 Ecken scannen: im Startaufbau garantiert leere gruene Felder
+    print("Kalibrierung: Ecken (Gruen)...")
+    green_samples = []
+    for pos in ["A1", "A8", "H1", "H8"]:
+        h, s, v = scan_field(pos)
+        green_samples.append((h, s, v))
+        print("  " + pos + " H=" + str(h) + " S=" + str(s) + " V=" + str(v))
+
+    # Startfelder mit je 2 weissen und 2 schwarzen Steinen
+    print("Kalibrierung: Startfelder (Steine)...")
+    piece_samples = []
+    for pos in ["D4", "E4", "D5", "E5"]:
+        h, s, v = scan_field(pos)
+        piece_samples.append((h, s, v))
+        print("  " + pos + " H=" + str(h) + " S=" + str(s) + " V=" + str(v))
+
+    default_position()
+
+    # Weiss = die 2 Steine mit hohem V (Helligkeit), Schwarz = die 2 mit niedrigem V
+    piece_sorted = sorted(piece_samples, key=lambda x: x[2])
+    black_samples = piece_sorted[:2]
+    white_samples = piece_sorted[2:]
+
+    # Sanity-Check: V-Abstand zwischen Weiss und Schwarz muss gross genug sein
+    min_white_v = white_samples[0][2]
+    max_black_v = black_samples[-1][2]
+    for x in white_samples:
+        if x[2] < min_white_v:
+            min_white_v = x[2]
+    for x in black_samples:
+        if x[2] > max_black_v:
+            max_black_v = x[2]
+
+    if min_white_v < max_black_v + 10:
+        print("WARNUNG: Weiss/Schwarz-Trennung unsicher (V-Abstand zu gering).")
+        print("         Vorherige Farbwerte werden beibehalten.")
+    else:
+        _HSV_RANGES[1] = make_range(white_samples)
+        _HSV_RANGES[2] = make_range(black_samples)
+
+    _HSV_RANGES[0] = make_range(green_samples)
+
+    print("Kalibrierung abgeschlossen:")
+    print("  Gruen  : " + str(_HSV_RANGES[0]))
+    print("  Weiss  : " + str(_HSV_RANGES[1]))
+    print("  Schwarz: " + str(_HSV_RANGES[2]))
+
+
 #### main program ####
 
 def main():
@@ -700,8 +789,9 @@ def main():
     wait_for_left_button()
     wait_for_left_button()
 
-    # Pre-Game: Startposition einmalig scannen und prüfen
-    wait_for_left_button("Bereit fuer Pre-Game Scan")
+    # Pre-Game: Farben kalibrieren, dann Startposition scannen und pruefen
+    wait_for_left_button("Bereit fuer Farbkalibrierung und Pre-Game Scan")
+    calibrate_colors()
     playground_scan()
     print_board_debug(board)
     start_ok = validate_start_position(board)
