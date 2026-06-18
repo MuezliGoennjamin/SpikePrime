@@ -13,7 +13,7 @@ hub = PrimeHub()
 velocity_X1 = 150
 velocity_X2 = 90
 velocity_Y2 = 100
-velocity_Z2 = 50
+velocity_Z2 = 30
 
 motor_X1 = Motor(Port.A)
 motor_X2 = Motor(Port.C)
@@ -22,13 +22,13 @@ motor_Z2 = Motor(Port.B)
 color_sensor = ColorSensor(Port.D)
 color_sensor.lights.on(0)
 
-move_distance_x = 83   # [Grad] Abstand von Zeile zu Zeile
-move_distance_y = 87   # [Grad] Abstand von Spalte zu Spalte
-pen_offset_y    =  70   # [Grad] Y-Versatz des Stifts hinter dem Farbsensor (TODO: kalibrieren)
+move_distance_x = 84   # [Grad] Abstand von Zeile zu Zeile
+move_distance_y = 86   # [Grad] Abstand von Spalte zu Spalte
+pen_offset_y    = 110   # [Grad] Y-Versatz des Stifts hinter dem Farbsensor (TODO: kalibrieren)
 
 # Anzeige-Position (Motorwinkel zur Uhr-Anzeige) – TODO: kalibrieren
-INDICATOR_X2 = 700
-INDICATOR_Y2 = 200
+INDICATOR_X2 = 1100
+INDICATOR_Y2 = -200
 
 
 ######################################################
@@ -119,17 +119,16 @@ def move_sensor_to(row, col):
 # tap on the touchscreen to place the token
 def Z2_tap():
 
+    # hover just above screen
+    motor_Z2.run_target(velocity_Z2, 140)
+    wait(200)
+
     # press down
     motor_Z2.run_target(velocity_Z2, 180)
 
     # short press time
     wait(300)
 
-    # move back up
-    motor_Z2.run_target(velocity_Z2, 140)
-
-    # wait for stable end position
-    wait(300)
 
 
 # HSV ranges: (h_lo, h_hi, s_lo, s_hi, v_lo, v_hi)
@@ -621,7 +620,7 @@ def is_indicator_red():
     wait(200)
     hsv = color_sensor.hsv(surface=False)
     h, s, v = hsv.h, hsv.s, hsv.v
-    return 346 <= h <= 349 and 58 <= s <= 74 and 49 <= v <= 100
+    return 330 <= h <= 355 and 58 <= s <= 74 and 49 <= v <= 100
 
 
 def wait_for_robot_turn():
@@ -650,10 +649,10 @@ def move_to_position(position):
 
     default_position()
 
-    # X: absolut zum Zielfeld
-    motor_X2.run_target(velocity_X2, move_distance_x * (9 - row))
+    # X: absolut zum Zielfeld (gleiche Formel wie move_sensor_to)
+    motor_X2.run_target(velocity_X2, move_distance_x * (8 - row))
     # Y: absolut zum Zielfeld + Stift-Versatz (Stift sitzt hinter dem Sensor)
-    motor_Y2.run_target(velocity_Y2, -(move_distance_y * (col + 1)) - pen_offset_y)
+    motor_Y2.run_target(velocity_Y2, -(move_distance_y * col) + pen_offset_y)
 
     wait(500)
     Z2_tap()
