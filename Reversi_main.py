@@ -110,8 +110,8 @@ def move_sensor_to(row, col):
     Anschliessend prueft center_on_field() ob der Sensor auf einem
     gueltigen Feld steht, und korrigiert falls er auf einer Feldlinie liegt.
     """
-    motor_X2.run_target(velocity_X2,  move_distance_x * (9 - row))
-    motor_Y2.run_target(velocity_Y2, -(move_distance_y * (col + 1)))
+    motor_X2.run_target(velocity_X2,  move_distance_x * (8 - row))
+    motor_Y2.run_target(velocity_Y2, -(move_distance_y * col))
     center_on_field()
 
 
