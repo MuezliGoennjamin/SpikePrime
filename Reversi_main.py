@@ -23,8 +23,9 @@ color_sensor = ColorSensor(Port.D)
 color_sensor.lights.on(0)
 
 move_distance_x = 84   # [Grad] Abstand von Zeile zu Zeile
-move_distance_y = 86   # [Grad] Abstand von Spalte zu Spalte
+move_distance_y = 87   # [Grad] Abstand von Spalte zu Spalte
 pen_offset_y    = 110   # [Grad] Y-Versatz des Stifts hinter dem Farbsensor (TODO: kalibrieren)
+pen_offset_x    = 30   # [Grad] X-Versatz des Stifts seitlich zum Farbsensor (TODO: kalibrieren)
 
 # Anzeige-Position (Motorwinkel zur Uhr-Anzeige) – TODO: kalibrieren
 INDICATOR_X2 = 1100
@@ -50,7 +51,7 @@ def wait_for_left_button(step=""):
 def default_position():
     motor_X2.run_target(velocity_X2, 0)
     motor_Y2.run_target(velocity_Y2, 0)
-    motor_Z2.run_target(velocity_Z2, 180)
+    motor_Z2.run_target(velocity_Z2, 160)
 
 
 # defines the moving distance of the Motors
@@ -120,11 +121,17 @@ def move_sensor_to(row, col):
 def Z2_tap():
 
     # hover just above screen
-    motor_Z2.run_target(velocity_Z2, 140)
+    motor_Z2.run_target(velocity_Z2, 160)
     wait(200)
 
     # press down
     motor_Z2.run_target(velocity_Z2, 180)
+
+    # short press time
+    wait(300)
+
+    #back up
+    motor_Z2.run_target(velocity_Z2, 160)
 
     # short press time
     wait(300)
@@ -139,6 +146,9 @@ _HSV_RANGES = {
     2: (145, 203, 35, 55,   0,  25),
 }
 _TOLERANCE = 0.05
+
+# Kalibrierter Rot-Bereich fuer den Turn Indicator (wird in calibrate_indicator() gesetzt)
+_RED_RANGE = (330, 355, 58, 74, 49, 100)
 
 
 def _in_range(value, low, high):
@@ -620,7 +630,43 @@ def is_indicator_red():
     wait(200)
     hsv = color_sensor.hsv(surface=False)
     h, s, v = hsv.h, hsv.s, hsv.v
-    return 330 <= h <= 355 and 58 <= s <= 74 and 49 <= v <= 100
+    h_lo, h_hi, s_lo, s_hi, v_lo, v_hi = _RED_RANGE
+    return h_lo <= h <= h_hi and s_lo <= s <= s_hi and v_lo <= v <= v_hi
+
+
+def calibrate_indicator():
+    """Kalibriert den roten HSV-Bereich des Turn Indicators.
+    Sensor muss ueber dem roten Feld der Uhr positioniert sein.
+    """
+    print("Kalibrierung Turn Indicator (rot)...")
+    goto_turn_indicator()
+
+    h_sum, s_sum, v_sum = 0, 0, 0
+    num = 5
+    for _ in range(num):
+        wait(200)
+        hsv = color_sensor.hsv(surface=False)
+        h_sum += hsv.h
+        s_sum += hsv.s
+        v_sum += hsv.v
+        print("  H=" + str(hsv.h) + " S=" + str(hsv.s) + " V=" + str(hsv.v))
+
+    h_avg = h_sum // num
+    s_avg = s_sum // num
+    v_avg = v_sum // num
+
+    margin_h = 15
+    margin_s = 15
+    margin_v = 20
+
+    global _RED_RANGE
+    _RED_RANGE = (
+        max(0,   h_avg - margin_h), min(360, h_avg + margin_h),
+        max(0,   s_avg - margin_s), min(100, s_avg + margin_s),
+        max(0,   v_avg - margin_v), min(100, v_avg + margin_v),
+    )
+    print("Rot-Bereich kalibriert: " + str(_RED_RANGE))
+    default_position()
 
 
 def wait_for_robot_turn():
@@ -649,8 +695,8 @@ def move_to_position(position):
 
     default_position()
 
-    # X: absolut zum Zielfeld (gleiche Formel wie move_sensor_to)
-    motor_X2.run_target(velocity_X2, move_distance_x * (8 - row))
+    # X: absolut zum Zielfeld + seitlicher Stift-Versatz
+    motor_X2.run_target(velocity_X2, move_distance_x * (8 - row) + pen_offset_x)
     # Y: absolut zum Zielfeld + Stift-Versatz (Stift sitzt hinter dem Sensor)
     motor_Y2.run_target(velocity_Y2, -(move_distance_y * col) + pen_offset_y)
 
@@ -859,6 +905,9 @@ def main():
     start_ok = validate_start_position(board)
     if not start_ok:
         wait_for_left_button("Startposition pruefen, dann fortfahren")
+
+    wait_for_left_button("Turn Indicator auf ROT stellen, dann fortfahren")
+    calibrate_indicator()
 
     first_turn = True
     while True:
