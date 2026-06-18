@@ -22,13 +22,13 @@ motor_Z2 = Motor(Port.B)
 color_sensor = ColorSensor(Port.D)
 color_sensor.lights.on(0)
 
-move_distance_x = 86   # [Grad] Abstand von Zeile zu Zeile
-move_distance_y = 88   # [Grad] Abstand von Spalte zu Spalte
+move_distance_x = 83   # [Grad] Abstand von Zeile zu Zeile
+move_distance_y = 87   # [Grad] Abstand von Spalte zu Spalte
 pen_offset_y    =  70   # [Grad] Y-Versatz des Stifts hinter dem Farbsensor (TODO: kalibrieren)
 
 # Anzeige-Position (Motorwinkel zur Uhr-Anzeige) – TODO: kalibrieren
-INDICATOR_X2 = 300
-INDICATOR_Y2 = 10
+INDICATOR_X2 = 700
+INDICATOR_Y2 = 200
 
 
 ######################################################
@@ -70,8 +70,8 @@ def center_on_field():
     Die Korrektur gilt nur fuer die aktuelle Messung – die naechste
     run_target-Bewegung kehrt ohnehin zum absoluten Zielwinkel zurueck.
     """
-    STEP  = 5    # [Grad] ~1.4 mm pro Korrekturschritt
-    MAX_N = 3    # Suchweite: bis zu ±3 Schritte = ±4.3 mm
+    STEP  = 3    # [Grad] ~0.8 mm pro Korrekturschritt
+    MAX_N = 3    # Suchweite: bis zu ±3 Schritte = ±2.6 mm
 
     def on_field():
         wait(100)
@@ -111,8 +111,8 @@ def move_sensor_to(row, col):
     Anschliessend prueft center_on_field() ob der Sensor auf einem
     gueltigen Feld steht, und korrigiert falls er auf einer Feldlinie liegt.
     """
-    motor_X2.run_target(velocity_X2,  move_distance_x * (9 - row))
-    motor_Y2.run_target(velocity_Y2, -(move_distance_y * (col + 1)))
+    motor_X2.run_target(velocity_X2,  move_distance_x * (8 - row))
+    motor_Y2.run_target(velocity_Y2, -(move_distance_y * col))
     center_on_field()
 
 
@@ -148,16 +148,33 @@ def _in_range(value, low, high):
 
 # scan field for white or black token and save the data of the field
 def field_scan(position, board):
+    NUM_SAMPLES = 5
+    counts = {}
 
-    wait(500)
+    wait(300)
+    for _ in range(NUM_SAMPLES):
+        wait(100)
+        hsv = color_sensor.hsv(surface=False)
+        h, s, v = hsv.h, hsv.s, hsv.v
 
-    hsv = color_sensor.hsv(surface=False)
-    h, s, v = hsv.h, hsv.s, hsv.v
+        for color_value, (h_lo, h_hi, s_lo, s_hi, v_lo, v_hi) in _HSV_RANGES.items():
+            if (_in_range(h, h_lo, h_hi) and
+                    _in_range(s, s_lo, s_hi) and
+                    _in_range(v, v_lo, v_hi)):
+                if color_value in counts:
+                    counts[color_value] += 1
+                else:
+                    counts[color_value] = 1
+                break
 
-    for color_value, (h_lo, h_hi, s_lo, s_hi, v_lo, v_hi) in _HSV_RANGES.items():
-        if _in_range(h, h_lo, h_hi) and _in_range(s, s_lo, s_hi) and _in_range(v, v_lo, v_hi):
-            board.set(position, color_value)
-            return
+    best_color = None
+    best_count = 0
+    for k in counts:
+        if counts[k] > best_count:
+            best_count = counts[k]
+            best_color = k
+    if best_color is not None:
+        board.set(position, best_color)
 
 
 # ============================================
@@ -674,9 +691,19 @@ def calibrate_colors():
         row = int(position[1])
         col = ord(position[0]) - ord('A')
         move_sensor_to(row, col)
-        wait(600)
-        hsv = color_sensor.hsv(surface=False)
-        return hsv.h, hsv.s, hsv.v
+        h_sum, s_sum, v_sum = 0, 0, 0
+        num = 5
+        for _ in range(num):
+            wait(200)
+            hsv = color_sensor.hsv(surface=False)
+            h_sum += hsv.h
+            s_sum += hsv.s
+            v_sum += hsv.v
+        h_avg = h_sum // num
+        s_avg = s_sum // num
+        v_avg = v_sum // num
+        print("    avg H=" + str(h_avg) + " S=" + str(s_avg) + " V=" + str(v_avg))
+        return h_avg, s_avg, v_avg
 
     def make_range(samples):
         h_min, h_max = 360, 0
@@ -819,10 +846,16 @@ def main():
     wait_for_left_button()
     wait_for_left_button()
 
-    # Pre-Game: Farben kalibrieren, dann Startposition scannen und pruefen
+    # Pre-Game: Farben kalibrieren, dann nur die 4 Mittelfelder zur Verifikation scannen
     wait_for_left_button("Bereit fuer Farbkalibrierung und Pre-Game Scan")
     calibrate_colors()
-    playground_scan()
+    print("Scanne Startfelder (D4/E4/D5/E5)...")
+    for _pos in ["D4", "E4", "D5", "E5"]:
+        _row_num = int(_pos[1])
+        _col_num = ord(_pos[0]) - ord('A')
+        move_sensor_to(_row_num, _col_num)
+        field_scan(_pos, board)
+    default_position()
     print_board_debug(board)
     start_ok = validate_start_position(board)
     if not start_ok:
