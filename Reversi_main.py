@@ -24,6 +24,7 @@ color_sensor.lights.on(0)
 
 move_distance_x = 86   # [Grad] Abstand von Zeile zu Zeile
 move_distance_y = 88   # [Grad] Abstand von Spalte zu Spalte
+pen_offset_y    =  70   # [Grad] Y-Versatz des Stifts hinter dem Farbsensor (TODO: kalibrieren)
 
 # Anzeige-Position (Motorwinkel zur Uhr-Anzeige) – TODO: kalibrieren
 INDICATOR_X2 = 300
@@ -110,8 +111,8 @@ def move_sensor_to(row, col):
     Anschliessend prueft center_on_field() ob der Sensor auf einem
     gueltigen Feld steht, und korrigiert falls er auf einer Feldlinie liegt.
     """
-    motor_X2.run_target(velocity_X2,  move_distance_x * (8 - row))
-    motor_Y2.run_target(velocity_Y2, -(move_distance_y * col))
+    motor_X2.run_target(velocity_X2,  move_distance_x * (9 - row))
+    motor_Y2.run_target(velocity_Y2, -(move_distance_y * (col + 1)))
     center_on_field()
 
 
@@ -632,19 +633,11 @@ def move_to_position(position):
 
     default_position()
 
-<<<<<<< HEAD
     # X: absolut zum Zielfeld
     motor_X2.run_target(velocity_X2, move_distance_x * (9 - row))
     # Y: absolut zum Zielfeld + Stift-Versatz (Stift sitzt hinter dem Sensor)
     motor_Y2.run_target(velocity_Y2, -(move_distance_y * (col + 1)) - pen_offset_y)
 
-=======
-    # move to target field
-    X2_relative(move_distance_x + x_distance)
-    Y2_relative(move_distance_y + y_distance)
-
-    # short pause before tap
->>>>>>> parent of a69db74 (offset für den Stift bei Feldanfahrt hinzugefügt)
     wait(500)
     Z2_tap()
     wait(500)
