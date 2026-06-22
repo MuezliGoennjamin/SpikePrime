@@ -22,7 +22,7 @@ motor_Z2 = Motor(Port.B)
 color_sensor = ColorSensor(Port.D)
 color_sensor.lights.on(0)
 
-move_distance_x = 86   # [Grad] Abstand von Zeile zu Zeile
+move_distance_x = 84   # [Grad] Abstand von Zeile zu Zeile
 move_distance_y = 86   # [Grad] Abstand von Spalte zu Spalte
 pen_offset_y    = 190   # [Grad] Y-Versatz des Stifts hinter dem Farbsensor (TODO: kalibrieren)
 pen_offset_x    = -300   # [Grad] X-Versatz des Stifts seitlich zum Farbsensor (TODO: kalibrieren)
@@ -126,7 +126,7 @@ def Z2_tap():
     wait(200)
 
     # press down
-    motor_Z2.run_target(velocity_Z2, 50)
+    motor_Z2.run_target(velocity_Z2, 45)
 
     # short press time
     wait(1000)
@@ -738,7 +738,7 @@ def calibrate_colors():
         row = int(position[1])
         col = ord(position[0]) - ord('A')
         motor_X2.run_target(velocity_X2,  move_distance_x * (8 - row))
-        motor_Y2.run_target(velocity_Y2, -(move_distance_y * col))
+        motor_Y2.run_target(velocity_Y2, -(move_distance_y * col)-20)
         center_on_field()
         wait(400)
         h_sum, s_sum, v_sum = 0, 0, 0
