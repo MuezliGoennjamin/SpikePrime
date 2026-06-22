@@ -13,7 +13,7 @@ hub = PrimeHub()
 velocity_X1 = 150
 velocity_X2 = 90
 velocity_Y2 = 100
-velocity_Z2 = 30
+velocity_Z2 = 20
 
 motor_X1 = Motor(Port.A)
 motor_X2 = Motor(Port.C)
@@ -22,14 +22,15 @@ motor_Z2 = Motor(Port.B)
 color_sensor = ColorSensor(Port.D)
 color_sensor.lights.on(0)
 
-move_distance_x = 84   # [Grad] Abstand von Zeile zu Zeile
-move_distance_y = 87   # [Grad] Abstand von Spalte zu Spalte
-pen_offset_y    = 110   # [Grad] Y-Versatz des Stifts hinter dem Farbsensor (TODO: kalibrieren)
-pen_offset_x    = 30   # [Grad] X-Versatz des Stifts seitlich zum Farbsensor (TODO: kalibrieren)
+move_distance_x = 86   # [Grad] Abstand von Zeile zu Zeile
+move_distance_y = 86   # [Grad] Abstand von Spalte zu Spalte
+pen_offset_y    = 190   # [Grad] Y-Versatz des Stifts hinter dem Farbsensor (TODO: kalibrieren)
+pen_offset_x    = -300   # [Grad] X-Versatz des Stifts seitlich zum Farbsensor (TODO: kalibrieren)
 
 # Anzeige-Position (Motorwinkel zur Uhr-Anzeige) – TODO: kalibrieren
-INDICATOR_X2 = 1100
-INDICATOR_Y2 = -200
+INDICATOR_X2 = -420
+INDICATOR_Y2 = 100
+INDICATOR_PEN_ANGLE = 60   # [Grad] Stiftwinkel vor dem Anfahren der Uhr – TODO: kalibrieren
 
 
 ######################################################
@@ -51,7 +52,7 @@ def wait_for_left_button(step=""):
 def default_position():
     motor_X2.run_target(velocity_X2, 0)
     motor_Y2.run_target(velocity_Y2, 0)
-    motor_Z2.run_target(velocity_Z2, 160)
+    motor_Z2.run_target(velocity_Z2, 90)
 
 
 # defines the moving distance of the Motors
@@ -121,17 +122,17 @@ def move_sensor_to(row, col):
 def Z2_tap():
 
     # hover just above screen
-    motor_Z2.run_target(velocity_Z2, 160)
+    motor_Z2.run_target(velocity_Z2, 70)
     wait(200)
 
     # press down
-    motor_Z2.run_target(velocity_Z2, 180)
+    motor_Z2.run_target(velocity_Z2, 50)
 
     # short press time
-    wait(300)
+    wait(1000)
 
     #back up
-    motor_Z2.run_target(velocity_Z2, 160)
+    motor_Z2.run_target(velocity_Z2, 70)
 
     # short press time
     wait(300)
@@ -621,6 +622,7 @@ def validate_start_position(board):
 # ============================================
 
 def goto_turn_indicator():
+    motor_Z2.run_target(velocity_Z2, INDICATOR_PEN_ANGLE)
     motor_X2.run_target(velocity_X2, INDICATOR_X2)
     motor_Y2.run_target(velocity_Y2, INDICATOR_Y2)
     wait(300)
@@ -735,11 +737,14 @@ def calibrate_colors():
     def scan_field(position):
         row = int(position[1])
         col = ord(position[0]) - ord('A')
-        move_sensor_to(row, col)
+        motor_X2.run_target(velocity_X2,  move_distance_x * (8 - row))
+        motor_Y2.run_target(velocity_Y2, -(move_distance_y * col))
+        center_on_field()
+        wait(400)
         h_sum, s_sum, v_sum = 0, 0, 0
-        num = 5
+        num = 10
         for _ in range(num):
-            wait(200)
+            wait(150)
             hsv = color_sensor.hsv(surface=False)
             h_sum += hsv.h
             s_sum += hsv.s
@@ -800,7 +805,7 @@ def calibrate_colors():
         if x[2] > max_black_v:
             max_black_v = x[2]
 
-    if min_white_v < max_black_v + 10:
+    if min_white_v < max_black_v + 20:
         print("WARNUNG: Weiss/Schwarz-Trennung unsicher (V-Abstand zu gering).")
         print("         Vorherige Farbwerte werden beibehalten.")
     else:
